@@ -59,7 +59,7 @@ mpdist    = 0.10;                         % distance to lid                  [m]
 pushDist  = 0.10;                         % disturbance application (Z)      [m]
 
 % Simulation settings
-startAngle = 10;         % initial tilt at t = 0        [deg]
+startAngle = 0;         % initial tilt at t = 0        [deg]
 twvlp      = 0.005;      % wheel-velocity filter tau    [s]
 
 
@@ -79,10 +79,10 @@ tdtilt = 0.1355;
 tipost = 0.1682;
 
 % --- Task 3: Velocity outer loop (source: design_task3_velocity.m) -----
-% Kpvel = 0 breaks the velocity loop so you can simulate Task 2 alone
-% (tilt reference defaults to 0) until a real design is computed.
-Kpvel  = 0;
-tivel  = 1;
+% wc_vel = 1 rad/s picked from the RHP-zero constraint (z/5 rule);
+% achieves wc = 1.00 rad/s, PM = 64.2 deg, GM = 7.84 dB. No Lead.
+Kpvel  = 0.1616;
+tivel  = 3.0000;
 
 % --- Task 4: Position outermost loop (source: design/design_task4_position.m)
 % Kppos  = 0;

@@ -7,8 +7,9 @@
 %            balance loop CLOSED (Task 2 gains active) and the velocity
 %            loop OPEN at theta_ref (linio 'openinput' breaks feedback).
 %
-%  Specs:    wc_vel = wc_tilt / 5 = 3 rad/s     (outer loop must be
-%                                                slower than inner)
+%  Specs:    wc_vel = 1 rad/s    (well below the RHP zero at +8.5 rad/s;
+%                                 the rule wc_vel <= z/5 keeps |L|
+%                                 monotonically decreasing past crossover)
 %            gamma_M >= 60 deg,  Ni = 3
 %
 %  Method:   Standard PI design on a stable plant — no post-integrator
@@ -70,7 +71,12 @@ describe_plant(Gvel_outer);
 
 %% ----------------------------- Design ----------------------------------
 % Specs
-wc_vel       = 3;        % target crossover [rad/s]  (= wc_tilt / 5)
+% ω_c is set by the RHP zero in Gvel,outer at +8.5 rad/s (physics: to
+% tilt forward the robot must first roll backward). Rule of thumb:
+%   ω_c <= z/5   keeps |L| monotonic past crossover -> stable design.
+% Picking wc_vel = 1 rad/s puts us safely below the gain-bump region
+% caused by the complex pole pair near -2.63 and the RHP zero.
+wc_vel       = 1;        % target crossover [rad/s]
 gamma_M_spec = 60;       % phase margin spec [deg]
 Ni_vel       = 3;        % PI zero at wc/Ni
 
