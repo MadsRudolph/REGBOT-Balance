@@ -22,12 +22,25 @@ close all; clear;
 s = tf('s');
 model = 'regbot_1mg';
 
-% Obsidian Images folder — auto-resolved from script location
-IMG_DIR = fullfile(fileparts(mfilename('fullpath')), ...
-    '..','..','..','..','Obsidian','Courses', ...
+% Output directory for plots — auto-detected
+%   - If the Obsidian vault folder exists, plots go there (useful for Mads).
+%   - Otherwise, plots are saved locally in simulink/images/ (default for team).
+%   - Set FORCE_LOCAL = true to always use the local folder.
+FORCE_LOCAL = false;
+
+SCRIPT_DIR   = fileparts(mfilename('fullpath'));
+OBSIDIAN_DIR = fullfile(SCRIPT_DIR, '..','..','..','..','Obsidian','Courses', ...
     '34722 Linear Control Design 1','Exercises','Work','regbot','Images');
-if ~exist(IMG_DIR,'dir'), mkdir(IMG_DIR); end
-fprintf('Plots will be saved to: %s\n', IMG_DIR);
+LOCAL_DIR    = fullfile(SCRIPT_DIR, 'images');
+
+if ~FORCE_LOCAL && exist(OBSIDIAN_DIR, 'dir')
+    IMG_DIR = OBSIDIAN_DIR;
+    fprintf('Plots -> Obsidian vault: %s\n', IMG_DIR);
+else
+    IMG_DIR = LOCAL_DIR;
+    if ~exist(IMG_DIR, 'dir'), mkdir(IMG_DIR); end
+    fprintf('Plots -> local folder:   %s\n', IMG_DIR);
+end
 
 %% 2. REGBOT physical parameters (used by the Simulink model)
 % Motor — electrical

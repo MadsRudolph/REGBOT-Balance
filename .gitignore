@@ -29,3 +29,6 @@ Report
 
 # Obsidian vault config (if someone opens this folder in Obsidian)
 .obsidian/
+
+# Locally generated plots (when Obsidian vault is not available)
+simulink/images/
