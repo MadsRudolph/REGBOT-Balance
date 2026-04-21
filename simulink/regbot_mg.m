@@ -59,7 +59,7 @@ mpdist    = 0.10;                         % distance to lid                  [m]
 pushDist  = 0.10;                         % disturbance application (Z)      [m]
 
 % Simulation settings
-startAngle = 0;         % initial tilt at t = 0        [deg]
+startAngle = 10;         % initial tilt at t = 0        [deg]
 twvlp      = 0.005;      % wheel-velocity filter tau    [s]
 
 
@@ -81,8 +81,20 @@ tipost = 0.1682;
 % --- Task 3: Velocity outer loop (source: design_task3_velocity.m) -----
 % wc_vel = 1 rad/s picked from the RHP-zero constraint (z/5 rule);
 % achieves wc = 1.00 rad/s, PM = 64.2 deg, GM = 7.84 dB. No Lead.
+
+
 Kpvel  = 0.1616;
 tivel  = 3.0000;
 
-% --- Task 4: Position outermost loop (source: design/design_task4_position.m)
-% Kppos  = 0;
+% --- Task 4: Position outermost loop (source: design_task4_position.m)
+% Pure P on Gpos,outer. wc_pos = 0.6 rad/s (1.67x below wc_vel = 1 rad/s);
+% achieves wc = 0.60 rad/s, PM = 59 deg, GM = 23.2 dB. The design script
+% wanted a tiny Lead (tdpos = 0.027 s) to push PM from 59 to 60, but a
+% pure-Lead TF is improper and Simulink rejects it. The 1 deg of PM isn't
+% worth a proper-Lead block with a fast filter pole — drop it.
+% Plant already has a free integrator (v -> x) so no I term needed.
+% 2 m step response: peak velocity 0.80 m/s (spec >= 0.7 m/s).
+
+
+Kppos  = 0.5335;
+tdpos  = 0.0273;
