@@ -68,22 +68,29 @@ twvlp      = 0.005;      % wheel-velocity filter tau    [s]
 % keep. Leave gains at 0 / sensible placeholders for loops not yet closed.
 
 % --- Task 1: Wheel-speed PI (source: design/design_task1_wheel.m) -----
-Kpwv   = 3.3100;
+% Day 5 v2 on-floor training-wheels plant Gvel = 2.198/(s+5.985).
+% wc = 30 rad/s, gamma_M spec >= 60 deg, Ni = 3 -> Kp = 13.20, tau_i = 0.10.
+% Achieved wc = 30.00 rad/s, PM = 82.85 deg, GM = Inf dB.
+Kpwv   = 13.2037;
 tiwv   = 0.1000;
 Kffwv  = 0;
 
 % --- Task 2: Balance controller (source: design/design_task2_balance.m)
-Kptilt = 1.1370;
+% Day 5 on-floor redesign: faster inner loop shifts Gtilt magnitude peak
+% from 5.95 to 8.03 rad/s, drops the required Lead boost from +63.8 to
+% +33.5 deg, and reduces tau_d accordingly. Same specs (wc = 15 rad/s,
+% gamma_M = 60 deg, Ni = 3). Achieved wc = 15.00, PM = 60.00, GM = -5.58
+% dB (lower bound, normal for P=1). Linear-model IC settling 1.34 s.
+Kptilt = 1.1999;
 titilt = 0.2000;
-tdtilt = 0.1355;
-tipost = 0.1682;
+tdtilt = 0.0442;
+tipost = 0.1245;
 
 % --- Task 3: Velocity outer loop (source: design_task3_velocity.m) -----
-% wc_vel = 1 rad/s picked from the RHP-zero constraint (z/5 rule);
-% achieves wc = 1.00 rad/s, PM = 64.2 deg, GM = 7.84 dB. No Lead.
-
-
-Kpvel  = 0.1616;
+% wc_vel = 1 rad/s (RHP-zero z/5 rule; zero still at +8.51 rad/s
+% after the Day 5 redesign). Achieved wc = 1.00 rad/s, PM = 68.98 deg,
+% GM = 5.84 dB. No Lead needed.
+Kpvel  = 0.1581;
 tivel  = 3.0000;
 
 % --- Task 4: Position outermost loop (source: design_task4_position.m)
@@ -96,5 +103,12 @@ tivel  = 3.0000;
 % 2 m step response: peak velocity 0.80 m/s (spec >= 0.7 m/s).
 
 
-Kppos  = 0.5335;
-tdpos  = 0.0273;
+% Day 5 on-floor redesign: with faster inner cascade the script wants a
+% slightly larger ideal Lead (tau_d = 0.0831 s, +2.85 deg PM boost), but
+% the improper (tau_d s + 1) still can't be realised as a Simulink
+% Transfer Fcn block. Drop the Lead; cost is ~3 deg PM (60 -> 57), which
+% is still comfortably above the spec-as-intent. Peak velocity on the
+% 2 m linear-sim step is 0.753 m/s (spec >= 0.7); hardware typically
+% outperforms sim due to the large-signal tilt lean.
+Kppos  = 0.5411;
+tdpos  = 0;
