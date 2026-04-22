@@ -76,10 +76,15 @@ tiwv   = 0.1000;
 Kffwv  = 0;
 
 % --- Task 2: Balance controller (source: design/design_task2_balance.m)
-Kptilt = 1.1370;
+% Day 5 on-floor redesign: faster inner loop shifts Gtilt magnitude peak
+% from 5.95 to 8.03 rad/s, drops the required Lead boost from +63.8 to
+% +33.5 deg, and reduces tau_d accordingly. Same specs (wc = 15 rad/s,
+% gamma_M = 60 deg, Ni = 3). Achieved wc = 15.00, PM = 60.00, GM = -5.58
+% dB (lower bound, normal for P=1). Linear-model IC settling 1.34 s.
+Kptilt = 1.1999;
 titilt = 0.2000;
-tdtilt = 0.1355;
-tipost = 0.1682;
+tdtilt = 0.0442;
+tipost = 0.1245;
 
 % --- Task 3: Velocity outer loop (source: design_task3_velocity.m) -----
 % wc_vel = 1 rad/s picked from the RHP-zero constraint (z/5 rule);

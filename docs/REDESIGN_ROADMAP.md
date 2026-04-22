@@ -16,7 +16,10 @@ Detailed plan: see Claude's plan file (local to the working machine).
     - [x] 1.C  Ran script → **Kp = 13.2037**, τ_i = 0.1000, achieved wc = 30.00, PM = 82.85°, GM = Inf
     - [x] 1.D  Paste new gains into `regbot_mg.m`
     - [x] 1.E  Commit
-- [ ] **Phase 2** — Task 2 redesign (re-linearise, new Kptilt/titilt/tdtilt/tipost)
+- [x] **Phase 2** — Task 2 redesign
+    - [x] Re-linearised Gtilt with the new inner loop in place
+    - [x] **Kptilt = 1.1999, titilt = 0.2000, tdtilt = 0.0442, tipost = 0.1245** (achieved wc = 15.00, PM = 60.00°, GM = −5.58 dB, 0 RHP closed-loop poles)
+    - [x] τ_d dropped 67% vs old design (0.1355 → 0.0442) — less Lead needed because the inner loop is properly fast now
 - [ ] **Phase 3** — Task 3 redesign (re-linearise Gvel,outer)
 - [ ] **Phase 4** — Task 4 redesign (re-linearise Gpos,outer)
 - [ ] **Phase 5** — Push gains into `config/regbot_group47.ini`, verify in Simulink (startAngle=10, topos=2)
@@ -32,3 +35,4 @@ Detailed plan: see Claude's plan file (local to the working machine).
 |---|---|---|
 | 2026-04-22 | 0 | Branch created on both submodules; roadmap in place. |
 | 2026-04-22 | 1 | Task 1 PI redesigned against Gvel = 2.198/(s+5.985). New Kp = 13.2037, tau_i = 0.1000. Achieved wc = 30.00 rad/s, PM = 82.85°, GM = ∞. |
+| 2026-04-22 | 2 | Task 2 re-linearised. Gtilt magnitude peak moved 5.95 → 8.03 rad/s. New tipost = 0.1245, titilt = 0.2000, tdtilt = 0.0442 (**−67%**), Kptilt = 1.1999. PM = 60.00°, settling 1.34 s vs 1.55 before. |
