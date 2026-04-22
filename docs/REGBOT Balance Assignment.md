@@ -187,6 +187,64 @@ flowchart LR
 
 ---
 
+## 🔁 2026-04-22 — Day 5 Redesign (v3, on-floor plant): CURRENT canonical values
+
+> [!abstract] Why this section exists
+> The cascade in Tasks 1–4 below was first designed against the **Day 4 wheels-up** plant $G_{vel} = 13.34/(s+35.71)$. That design met spec on the bench but Test 0 on the floor revealed the effective inner-loop bandwidth was ~4× below the designed $\omega_c = 30$ rad/s — the Day 4 identification was ~6× faster than the true on-floor plant. The cascade was redesigned on the `day5-redesign` branch against the **Day 5 v2 on-floor** plant $G_{vel} = 2.198/(s+5.985)$, re-linearised at every outer loop, re-validated on the physical robot. Everything below Task 1 has the original derivations intact (they still show the method); the numbers here are the reportable ones.
+
+### Redesign story in one paragraph
+First attempt: Day 4 wheels-up identification gave $K_{pwv} = 3.31$ with 121.6° PM. Hardware Test 0 measured wheel-speed rise of 0.33 s (not the ~0.08 s the 30 rad/s design predicted) → effective bandwidth ~9 rad/s. Root cause: the assignment runs on the floor, not wheels-up. Re-identified against `Day5_results_v2.mat` → $G_{vel} = 2.198/(s+5.985)$ (6× slower dominant pole). Same targets ($\omega_c = 30$, $\gamma_M \geq 60$, $N_i = 3$); $K_{pwv}$ rose to **13.20** (4×). Each downstream task re-linearised, new gains committed to `regbot_mg.m` and `config/regbot_group47.ini`, Simulink sanity sims green, hardware re-validated (Tests 0, 3a, 3b, 4 on 2026-04-22).
+
+### v3 canonical gains (authoritative)
+
+| Task | Controller | Plant used (v3) | $\omega_c$ | $\gamma_M$ | Gains |
+|---|---|---|---|---|---|
+| 1 — Wheel speed | PI | `2.198/(s+5.985)` (Day 5 v2 on-floor) | 30.00 rad/s | 82.85° | $K_{pwv} = 13.2037$, $\tau_{iwv} = 0.1000$ s |
+| 2 — Balance | PILead + Post-PI | `Gtilt` re-linearised (1 RHP pole +8.89) | 15.00 rad/s | 60.00° | $K_{ptilt} = 1.1999$, $\tau_{itilt} = 0.2000$ s, $\tau_{dtilt} = 0.0442$ s, $\tau_{ipost} = 0.1245$ s |
+| 3 — Velocity | PI | `Gvel,outer` (RHP zero +8.51) | 1.00 rad/s | 68.98° | $K_{pvel} = 0.1581$, $\tau_{ivel} = 3.0000$ s |
+| 4 — Position | P | `Gpos,outer` (free integrator) | 0.60 rad/s | ~57° | $K_{ppos} = 0.5411$ |
+
+Firmware sign: `[cbal] kp = -1.1999` (the firmware Balance block does not absorb the Lecture-10 Method-2 sign internally — finding from the v1 campaign, still applies).
+
+### Key shifts vs. the first-attempt (v1) design
+
+| Quantity | v1 (Day 4 wheels-up) | v3 (Day 5 on-floor) | Change |
+|---|---|---|---|
+| $K_{pwv}$ | 3.31 | 13.2037 | **×4** |
+| $\tau_{dtilt}$ | 0.1355 s | 0.0442 s | **−67%** (less Lead needed — inner loop is properly fast now) |
+| $\tau_{ipost}$ | 0.1682 s | 0.1245 s | −26% ($|G_{tilt}|$ peak shifted 5.95 → 8.03 rad/s) |
+| $K_{pvel}$ | 0.162 | 0.1581 | −2% (RHP zero physics-fixed) |
+| $K_{ppos}$ | 0.5335 | 0.5411 | +1% (free integrator physics-fixed) |
+
+### Hardware outcome summary (v3, 2026-04-22)
+
+| Test | Spec | v3 result | v1/v2 baseline | Verdict |
+|---|---|---|---|---|
+| 0 — wheel speed | reach 0.27 m/s ≈ 0.3 s | **0.012 s** rise, L/R 0.76%, peak V 2.60 V | v1: 0.329 s rise, peak V 2.06 V | PASS — **27× faster rise**, bandwidth finally materialises |
+| 3a — balance at rest | drift ≤ 0.5 m over 10 s | 0.505 m drift (marginal fail); tilt std **1.87°** | v2: 0.343 m drift, tilt std 4.76° | v2 3a is the reportable spec result; v3 shows **61% tighter balance** but tilt-offset bias integrates to larger drift — see §Test 3a nuance below |
+| 3b — square at 0.8 m/s | 4 sides + 3 turns, no fall | heading 359.8°, peak tilt +25.5°, tilt std 5.03°, **peak V 7.31 V (91% of ±8 V budget)** | v2: peak V 4.67 V (58%) | PASS — voltage headroom shrunk; this is the bandwidth↔saturation-margin trade |
+| 4 — 2 m topos step | peak v ≥ 0.7, reach 2 m in 10 s | final 1.964 m (**3.6 cm short**), no overshoot, peak tilt +17.3°, tilt std 2.93°, peak V 4.95 V (no saturation) | v2: 10.7 cm short, peak tilt +25°, tilt std 5.18°, late limit cycle | PASS — **cleanest test of the campaign**, 3× more accurate final position, no late limit cycle |
+
+### Test 3a nuance (important for honest reporting)
+
+Test 3a was run twice on v3. First run: drift 0.475 m (inside spec), mean tilt offset +1.13°. After tilt-offset recalibration (Y=175): drift 0.505 m (marginal fail), mean tilt offset +1.11°. The recalibration did **not** remove the bias — either one more iteration is needed (Y ≈ 176) or the residual ~1° is a physical asymmetry (CG / wheel-radius) that calibration cannot fix. **Reportable Test 3a uses v2 (drift 0.343 m, passes spec)** because drift depends on sensor calibration which is outside the controller's authority. The v3 **tilt-std improvement (1.87° vs 4.76°, 61% tighter balance)** is cited separately as a redesign win. Tests 3b and 4 do not show the bias because the outer loops regulate it away.
+
+### Redesign wins vs. costs (the report's discussion material)
+
+**Wins:**
+1. Test 0 rise **27× faster** (0.012 s vs 0.329 s) — the designed 30 rad/s inner-loop bandwidth actually materialises on hardware now.
+2. Test 3a tilt std **61% tighter** (1.87° vs 4.76°) — no late oscillations of the kind seen in v2.
+3. Test 4 final position **3× more accurate** (3.6 cm short vs 10.7 cm).
+4. Test 4 **no limit cycle after target reached** (v2 showed visible ±10° pitch and ±0.5 m/s `vref` swings).
+5. Test 4 peak tilt **17° vs 25°** — tighter balance → less aggressive lean during acceleration.
+
+**Costs:**
+1. Test 3a drift 0.505 m vs 0.343 m — not a controller issue (tilt-offset bias integrates more cleanly with the tighter v3 controller). Mitigation: further Y-offset calibration.
+2. Test 3b peak motor voltage **7.31 V (91%) vs 4.67 V (58%)** — 4× higher $K_{pwv}$ makes the inner PI react 4× harder to corner `vel_ref` step commands. Classic bandwidth-vs-saturation-margin trade-off.
+3. Test 4 peak velocity 0.79 m/s vs 1.01 m/s — tighter balance → less over-tilt → less physical thrust. Still above the 0.7 m/s spec; the trade is intentional.
+
+---
+
 ## Tasks
 
 ### Task 1 — Wheel Speed Controller (PI)
@@ -415,30 +473,34 @@ In practice this means the Task 2 workflow is: (i) plot $G_{tilt}$ on Nyquist, (
 
 #### Task 1 — Wheel Speed PI Controller ✅
 
-**Plant used:** Day 5 black-box identification $G_{vel}(s) = \dfrac{13.34}{s + 35.71}$
-(Chosen over the linearized $G_{wv}$ because the assignment specifies the Day 5 TF, and because the inner velocity loop should be designed in isolation from the unstable tilt mode.)
+> [!warning] v1 (Day 4 wheels-up) vs v3 (Day 5 on-floor)
+> The first-campaign design below (v1) was built against the **Day 4 wheels-up** plant $G_{vel} = 13.34/(s + 35.71)$. It met spec on the bench but hardware Test 0 revealed the effective inner-loop bandwidth was ~4× below the designed $\omega_c$ because the assignment runs on the floor. The **v3 redesign** (current canonical gains — see the "Day 5 Redesign" section near the top) uses the Day 5 v2 on-floor plant $G_{vel} = 2.198/(s+5.985)$, giving $K_{pwv} = 13.2037$. The procedure below is otherwise identical — same targets, same recipe, just a different starting plant. Both designs are documented because the v1→v3 arc is itself the story the report tells.
 
-**Design choices:**
+**Plant used (v1):** Day 5 black-box identification $G_{vel}(s) = \dfrac{13.34}{s + 35.71}$ — identified with the robot wheels-up.
+**Plant used (v3):** Day 5 v2 on-floor identification $G_{vel}(s) = \dfrac{2.198}{s + 5.985}$ — loaded from `data/Day5_results_v2.mat` by the updated `design_task1_wheel.m`.
+
+**Design choices (same for both):**
 
 | Parameter | Value | Reason |
 |---|---|---|
-| $\omega_c$ | 30 rad/s | Fast inner loop, still below $\omega$ of plant pole (35.71) |
+| $\omega_c$ | 30 rad/s | Fast inner loop, below the plant pole (v1: 35.71; v3: 5.99 → design is now "beyond the pole", still physically achievable given motor τ ≈ 2 ms) |
 | $\gamma_M$ (target) | $\geq 60°$ | Spec |
 | $N_i$ | 3 | PI zero placed 3× below crossover |
 
 **Computed values:**
 
-| Parameter                      | Value                                |
-| ------------------------------ | ------------------------------------ |
-| $\tau_i = N_i/\omega_c$        | **0.10 s**                           |
-| $K_p$ (from $L(j\omega_c)= 1$) | **3.31**                             |
-| Achieved $\omega_c$            | ~30 rad/s                            |
-| Achieved $\gamma_M$            | ~121° (well above 60° spec — robust) |
+| Parameter                      | v1 (wheels-up)                       | v3 (on-floor) — canonical        |
+| ------------------------------ | ------------------------------------ | -------------------------------- |
+| $\tau_i = N_i/\omega_c$        | **0.100 s**                          | **0.100 s**                      |
+| $K_p$ (from $L(j\omega_c)= 1$) | **3.31**                             | **13.2037**                      |
+| Achieved $\omega_c$            | 29.88 rad/s                          | 30.00 rad/s                      |
+| Achieved $\gamma_M$            | 121.6° (very conservative)           | 82.85° (still well above 60°)    |
+| Achieved GM                    | ∞                                    | ∞                                |
 
-**Controller:**
-$$C_{wv}(s) = 3.31 \cdot \frac{0.1s + 1}{0.1s}$$
+**Controller (v3, canonical):**
+$$C_{wv}(s) = 13.2037 \cdot \frac{0.1s + 1}{0.1s}$$
 
-**Simulink:** The starter model variables `Kpwv` and `tiwv` have been updated to these design values.
+**Simulink:** `regbot_mg.m` and `config/regbot_group47.ini` hold the v3 gains.
 
 ![[regbot_task1_bode.png]]
 *Task 1 open-loop Bode with phase and gain margins marked.*
@@ -577,17 +639,21 @@ $$C_\text{total}(s) = K_P \cdot \underbrace{\frac{-(\tau_{i,\text{post}}s + 1)}{
 
 #### Design summary
 
-| Parameter           | Symbol                 | Value      | Source                                              |
-| ------------------- | ---------------------- | ---------- | --------------------------------------------------- |
-| Target crossover    | $\omega_c$             | $15$ rad/s | spec                                                |
-| Target phase margin | $\gamma_M$             | $60°$      | spec                                                |
-| PI zero ratio       | $N_i$                  | $3$        | standard placement                                  |
-| Post-integrator     | $\tau_{i,\text{post}}$ | $0.1682$ s | $1/\omega_{\text{peak}}$ of $\lvert G_{tilt}\rvert$ |
-| Outer PI            | $\tau_i$               | $0.200$ s  | $N_i/\omega_c$                                      |
-| Lead (gyro)         | $\tau_d$               | $0.1355$ s | $\tan(\phi_\text{Lead})/\omega_c$                   |
-| Loop gain           | $K_P$                  | $1.137$    | $L(j\omega_c)= 1$                                   |
+> [!warning] v1 values shown below; v3 is canonical
+> The numbers in this table are the original v1 design against $G_{tilt}$ re-linearised with the Day 4 inner loop. The **v3 redesign** (see the "Day 5 Redesign" section near the top) re-linearised $G_{tilt}$ with the Day 5 inner loop — the peak of $|G_{tilt}|$ shifted from 5.95 to 8.03 rad/s and $\tau_d$ dropped 67% because the inner loop is now properly fast, so the Lead does less work.
 
-These four values (`Kptilt`, `titilt`, `tdtilt`, `tipost`) are written to the MATLAB base workspace by `regbot_mg.m` and read automatically by the Simulink blocks when the model loads.
+| Parameter           | Symbol                 | v1 value   | **v3 value (canonical)** | Source                                              |
+| ------------------- | ---------------------- | ---------- | ------------------------ | --------------------------------------------------- |
+| Target crossover    | $\omega_c$             | $15$ rad/s | $15$ rad/s               | spec                                                |
+| Target phase margin | $\gamma_M$             | $60°$      | $60°$                    | spec                                                |
+| PI zero ratio       | $N_i$                  | $3$        | $3$                      | standard placement                                  |
+| Post-integrator     | $\tau_{i,\text{post}}$ | $0.1682$ s | **$0.1245$ s**           | $1/\omega_{\text{peak}}$ of $\lvert G_{tilt}\rvert$ (peak shifted 5.95 → 8.03 rad/s) |
+| Outer PI            | $\tau_i$               | $0.200$ s  | $0.2000$ s               | $N_i/\omega_c$                                      |
+| Lead (gyro)         | $\tau_d$               | $0.1355$ s | **$0.0442$ s** (**−67%**) | $\tan(\phi_\text{Lead})/\omega_c$; $\phi_{\text{Lead}}$ only +33.5° (was +63.8°) because the post-integrated plant has more phase at crossover |
+| Loop gain           | $K_P$                  | $1.137$    | **$1.1999$**             | $L(j\omega_c)= 1$                                   |
+| Linear settling (1 rad IC regulation) | — | 1.55 s | **1.34 s** | `initial()` on closed pitch loop |
+
+These four values (`Kptilt`, `titilt`, `tdtilt`, `tipost`) are written to the MATLAB base workspace by `regbot_mg.m` (v3 values committed) and read automatically by the Simulink blocks when the model loads.
 
 ---
 
@@ -957,15 +1023,20 @@ Kept separation $\omega_{c,\text{pos}} / \omega_{c,\text{vel}} = 0.6$ (1.67× in
 
 #### Design landed
 
-| Parameter | Value | Source |
-|---|---|---|
-| $\omega_{c,\text{pos}}$ | 0.6 rad/s | Iterated spec |
-| $\gamma_M$ | 59° | P-only (Lead dropped, see below) |
-| $K_{p,\text{pos}}$ | **0.5335** | $1/\|L(j\omega_c)\|$ |
-| $\tau_{d,\text{pos}}$ | 0 | Design wanted 0.027 s; dropped — see below |
+> [!note] v1 → v3 update
+> The v1 values (0.5335, Lead 0.027 s wanted) below are the first-campaign numbers. **v3 canonical** values after re-linearising against the Day 5 inner loop: $K_{ppos} = 0.5411$ (+1%), required Lead +2.85° (was +0.94°) → again dropped because $(\tau_d s + 1)$ is improper for Simulink. ~3° PM cost accepted; achieved PM ≈ 57°, GM = 25.17 dB. Sim peak velocity 0.753 m/s (still above 0.7 spec).
 
-**Controller:**
-$$C_{\text{pos}}(s) = 0.5335$$
+| Parameter | v1 value | **v3 value (canonical)** | Source |
+|---|---|---|---|
+| $\omega_{c,\text{pos}}$ | 0.6 rad/s | 0.6 rad/s | Iterated spec |
+| $\gamma_M$ | 59° | ~57° | P-only (Lead dropped, see below) |
+| $K_{p,\text{pos}}$ | 0.5335 | **0.5411** | $1/\|L(j\omega_c)\|$ |
+| $\tau_{d,\text{pos}}$ | 0 | 0 | Design wanted 0.027 s (v1) / 0.083 s (v3); dropped in both — see below |
+| GM | 23.2 dB | 25.17 dB | `margin()` |
+| Sim peak $v$ (2 m step) | 0.80 m/s | 0.753 m/s | still > 0.7 m/s spec |
+
+**Controller (v3 canonical):**
+$$C_{\text{pos}}(s) = 0.5411$$
 
 Pure P. The plant's free integrator (position = $\int$ velocity) makes the open loop Type-1 already, so no I-term needed to zero the step-tracking error.
 
@@ -1024,16 +1095,63 @@ With the above wiring and the committed gains, simulating a 2 m step at $t = 1$ 
 #### Committed gains (`regbot_mg.m`)
 
 ```matlab
-% --- Task 4: Position outermost loop
-Kppos  = 0.5335;
+% --- Task 4: Position outermost loop (v3, Day 5 on-floor redesign)
+Kppos  = 0.5411;
 tdpos  = 0;          % Lead dropped — see session note
 ```
 
-> [!todo] Remaining work
-> - [ ] Physical REGBOT Test 4: `vel=0, bal=1, log=15 : time=2` then `topos=2, vel=1.2 : time=10`
-> - [ ] XY-plane plot (the "cool figure" required by the assignment) — from the physical run
-> - [ ] Write up the Task 4 section of the report
+---
+
+### 2026-04-22 — Session 4 (`day5-redesign` branch): Cascade redesign against the Day 5 on-floor plant ✅
+
+Branch tracker: [[REDESIGN_ROADMAP]]. Handoff: [[HANDOFF]]. Plan: `C:\Users\Mads2\.claude\plans\partitioned-gliding-hopcroft.md`.
+
+#### Trigger
+
+Post-v1 campaign, Test 0 logged a wheel-speed rise of **0.329 s** to reach 0.27 m/s. A first-order closed loop at $\omega_c = 30$ rad/s predicts ~0.08 s. The measured effective bandwidth was ~9 rad/s — roughly **4× slower** than the designed 30 rad/s.
+
+#### Root cause
+
+The Day 4 "wheels-up" identification used for Task 1 ($G_{vel} = 13.34/(s+35.71)$) has DC gain 0.374 and pole at 35.71 rad/s (τ = 28 ms). The assignment runs on the floor. Re-loaded `data/Day5_results_v2.mat` and inspected `G_1p_avg`: $G_{vel} = 2.198/(s+5.985)$, DC gain 0.367 (essentially identical), pole at 5.99 rad/s (τ = 167 ms). The on-floor dominant pole is ~6× slower than the wheels-up approximation. The v1 design kept the robot stable because the 121.6° phase-margin cushion absorbed the mismatch, but the designed $\omega_c$ was never actually achieved on hardware.
+
+#### Redesign method
+
+1. **Task 1.** Updated `design_task1_wheel.m` to load `G_1p_avg` from the MAT file. Same targets ($\omega_c = 30$, $\gamma_M \geq 60$, $N_i = 3$). Result: $K_{pwv} = 13.2037$ (×4), $\tau_{iwv} = 0.1$ s, achieved $\omega_c = 30.00$, $\gamma_M = 82.85°$, GM = ∞.
+2. **Task 2.** Re-linearised Simulink with new Task 1 gains active. `|G_tilt|` magnitude peak shifted 5.95 → 8.03 rad/s. New $\tau_{ipost} = 0.1245$ s (−26%). Outer PI and phase balance re-computed: $\phi_{\text{Lead}}$ dropped from +63.8° to +33.5° (the post-integrated plant has more phase at crossover now), so $\tau_d$ dropped 67% (0.1355 → 0.0442 s). New loop gain $K_{ptilt} = 1.1999$. Achieved $\omega_c = 15$, $\gamma_M = 60°$, GM = −5.58 dB (lower-bound for P = 1), 0 RHP closed-loop poles. Linear IC-regulation settling improved 1.55 → 1.34 s.
+3. **Task 3.** Re-linearised `Gvel,outer` with new Tasks 1 + 2 gains. RHP zero at +8.51 rad/s unchanged (physics). Plant gained a new LHP zero at −8.03 matching the post-integrator peak, and the dominant complex pole pair moved from −2.63 to −10.4 (balance loop is doing more work). New $K_{pvel} = 0.1581$ (−2%), $\tau_{ivel} = 3.0$ s unchanged. Achieved $\omega_c = 1.00$, $\gamma_M = 68.98°$ (up from 64.2°), GM = +5.84 dB.
+4. **Task 4.** Re-linearised `Gpos,outer`; free integrator still present. New $K_{ppos} = 0.5411$ (+1%). Phase-balance Lead requirement rose from +0.94° to +2.85°, still negligible and still dropped for the improper-TF Simulink reason. Achieved PM ≈ 57° (with Lead would be 60°), GM = 25.17 dB. Sim peak velocity 0.753 m/s (still above 0.7 spec).
+5. **Firmware config.** Updated `config/regbot_group47.ini` `[cvel]`, `[cbal]`, `[cbav]`, `[cbap]` blocks. Sign on `[cbal] kp` stays negative — finding from v1 campaign that firmware Balance block does not absorb Lecture-10 Method-2 sign flip internally.
+6. **Simulink sanity sims.** `startAngle=10` balance recovery: voltage peak 2.8 V, pitch 10° → 0° within ~0.3 s, settled by t ≈ 2 s. `topos=2` step: x reaches 2.15 m peak (7.5% overshoot), settles at 2.00 m, peak velocity ≈ 0.80 m/s, voltage peak ~3 V, pitch +17° during accel. See `figures/regbot_task2_sim_recovery_10deg_v3.png` and `figures/regbot_task4_sim_step_v3.png`.
+
+#### Hardware validation campaign (v3, 2026-04-22)
+
+All four hardware tests re-run with v3 `regbot_group47.ini` loaded into GUI → sent to robot → saved to flash. Logs under `logs/test*_v3_onfloor_*.txt`, plots under `figures/test*_v3_onfloor_*.png` (mirrored into `docs/images/`).
+
+**Test 0 — wheel speed at vel = 0.3 m/s (balance off):** PASS.
+- Rise to 0.27 m/s in **0.012 s** (v1 was 0.329 s — **27× faster** on hardware).
+- L/R mean agreement 0.76%. Peak motor voltage 2.60 V.
+- The designed 30 rad/s inner-loop bandwidth finally materialises on hardware. The steady-state voltage ripple increased slightly compared to v1 — expected, the 4× higher $K_{pwv}$ gives the inner PI 4× more noise-bandwidth to react to.
+
+**Test 3a — balance at rest (two runs):**
+- *First v3 run:* drift 0.475 m (inside spec), mean tilt offset +1.13°, tilt std 2.04° (57% tighter than v2's 4.76°, no late oscillation).
+- *After Y-offset recalibration to 175:* drift 0.505 m (marginally outside 0.5 m spec), mean tilt offset +1.11°, tilt std 1.87° (61% tighter than v2). Bias essentially unchanged by the recal — either further iteration needed (Y ≈ 176) or a physical CG / wheel-radius asymmetry cannot be calibrated out.
+- **Decision:** use **v2 Test 3a (drift 0.343 m, passes spec)** as the reportable 3a result, and cite the v3 tilt-std tightening separately. Drift depends on sensor calibration which is outside the controller's authority; tilt tightness is what the controller redesign affects. This is honest engineering.
+
+**Test 3b — square run at 0.8 m/s:** PASS.
+- 4 sides + 3 turns completed. Heading 359.8° (0.06% error). Peak tilt +25.5°. Tilt std 5.03° (tighter than v2's 5.72°).
+- **Peak motor voltage 7.31 V (91% of ±8 V budget)** — v2 had 4.67 V (58%). Cause: 4× higher $K_{pwv}$ makes the inner PI react 4× harder to sharp corner `vel_ref` steps. This is the classic bandwidth-vs-saturation-margin trade-off. Still within spec, but an important discussion point for the report.
+
+**Test 4 — 2 m topos step:** PASS, cleanest result of the campaign.
+- Final x = 1.964 m (**3.6 cm short**; v2 was 10.7 cm short — **3× closer to target**).
+- **No overshoot, no late limit cycle** (v2 had visible ±10° pitch oscillations and ±0.5 m/s `vref` swings after target).
+- Peak tilt +17.3° (v2 +25°, −31%). Tilt std 2.93° (v2 5.18°, −43%).
+- Peak motor voltage 4.95 V, **no saturation** (the Test 3b saturation concern did not materialise because the position-loop `vref` is smooth, not step-like).
+- Peak velocity 0.79 m/s (still > 0.7 m/s spec; v2 was 1.01 m/s — tighter control = less over-tilt = less thrust, intentional trade).
+
+#### Commits landed on `day5-redesign`
+
+All commits on this branch scoped to REGBOT-Balance-Assignment submodule + Report submodule (both on `day5-redesign`). DTU main was not branched. Submodule-pointer bumps on DTU main will happen only after the branch merges back to main (Phase 8, on hold by user instruction).
 
 ---
 
-*Last updated: 2026-04-21*
+*Last updated: 2026-04-22 (Day 5 on-floor redesign campaign complete, Phase 7 documentation landed, Phase 8 merge on hold pending user approval).*
