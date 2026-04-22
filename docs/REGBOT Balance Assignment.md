@@ -93,12 +93,10 @@ See the _Day 5 redesign_ note at the bottom for why on-floor identification was 
 ## Task 1 — Wheel-speed PI
 
 > [!tldr]+ Task 1 summary
-> **Script:** `design_task1_wheel` — reads `G_1p_avg` from `data/Day5_results_v2.mat`.
-> **Plant:** $G_{vel}(s) = 2.198 / (s + 5.985)$ (Day 5 on-floor).
-> **Specs:** $\omega_c = 30$ rad/s, $\gamma_M \geq 60°$, $N_i = 3$.
-> **Phase balance at $\omega_c$:** plant $-78.7°$, PI $-18.4°$ → natural $\gamma_M = 82.9°$, no Lead needed.
-> **Result:** $K_p = 13.2037$, $\tau_i = 0.100$ s; achieved $\omega_c = 30.00$, $\gamma_M = 82.85°$, $GM = \infty$.
-> **Commit:** `Kpwv = 13.2037; tiwv = 0.1000; Kffwv = 0;`
+> **Purpose.** Design the innermost controller of the cascade — a PI that turns a velocity reference into motor voltage. This is the fastest loop, so everything outside it can later treat it as an approximately instantaneous unity gain. That is the whole reason the cascaded design works: once Task 1 is closed, Task 2 can ignore the voltage-to-velocity dynamics and design directly in the tilt channel.
+> **What this section shows.** The Day 5 on-floor plant $G_{vel}(s) = 2.198/(s+5.985)$, the phase-balance calculation at the chosen $\omega_c = 30$ rad/s (plant $-78.7°$, PI $-18.4°$ → natural $\gamma_M = 82.9°$, so no Lead is needed), and the single $K_p$ solve that puts $|L(j\omega_c)| = 1$. Bode and closed-loop step plots confirm the derivation.
+> **Result.** $K_p = 13.2037$, $\tau_i = 0.100$ s. Achieved $\omega_c = 30.00$ rad/s, $\gamma_M = 82.85°$, $GM = \infty$.
+> **How Task 2 uses it.** Paste the gains into `regbot_mg.m` and run `design_task2_balance`. That script opens `regbot_1mg.slx` with these Task 1 values in the workspace and calls `linearize` from `vel_ref` to the tilt-angle output — the closed Task 1 loop is precisely what makes the resulting $G_{tilt}$ a plant the balance controller can meaningfully design against.
 
 `design_task1_wheel`
 
@@ -133,14 +131,14 @@ Kffwv = 0;
 ## Task 2 — Balance (Lecture 10 Method 2)
 
 > [!tldr]+ Task 2 summary
-> **Script:** `design_task2_balance` — linearises the Simulink model with Task 1 closed.
-> **Plant:** 7th-order $G_{tilt}(s) = v_{ref} \to$ tilt, $P = 1$ RHP pole at $+9.13$ rad/s (pendulum falling mode).
-> **Method 2 = sign flip + post-integrator + PI-Lead.** Four steps:
-> 1. **Sign:** DC gain $> 0$ and $P = 1$ require CCW encirclement → $\mathrm{sign}(K_{PS}) = -1$, absorbed into the post-integrator.
-> 2. **Post-integrator:** $|G_{tilt}|$ peak at $8.17$ rad/s → $\tau_{i,\text{post}} = 0.1224$ s; flattens the peak.
-> 3. **Outer PI-Lead on $G_{tilt,\text{post}}$:** $\omega_c = 15$, $\gamma_M = 60°$, $N_i = 3$ → $\tau_i = 0.200$, $\phi_{\text{Lead}} = +34.25°$, gyro-based $\tau_d = 0.0454$, $K_P = 1.1871$.
-> 4. **Verification:** $\omega_c = 15.00$, $\gamma_M = 60.00°$, $GM = -5.44$ dB (lower bound, $P = 1$ — normal), $0$ RHP closed-loop poles.
-> **Commit:** `Kptilt = 1.1871; titilt = 0.2000; tdtilt = 0.0454; tipost = 0.1224;` (firmware `[cbal] kp` is entered negative — Method 2 sign flip).
+> **Purpose.** Stabilise the inverted-pendulum tilt dynamics. With Task 1 closed, linearising `vel_ref → tilt angle` gives a 7th-order plant with $P = 1$ RHP pole at $+9.13$ rad/s — this is the "falling" mode of the pendulum. A plain PI-Lead can't stabilise this (Nyquist won't encircle $-1$ in the correct direction), so the design follows Lecture 10 **Method 2**.
+> **What this section shows.** The four-step Method 2 recipe worked through end-to-end:
+> 1. **Sign check.** DC gain $> 0$ with $P = 1$ forces a CCW Nyquist encirclement requirement. No positive-gain controller can produce it, so a $-1$ is bundled into the post-integrator.
+> 2. **Post-integrator.** Its zero is placed at the magnitude peak of $|G_{tilt}|$ ($\omega_\text{peak} = 8.17$ rad/s → $\tau_{i,\text{post}} = 0.1224$ s). After this, $G_{tilt,\text{post}} = -C_{PI,\text{post}}\,G_{tilt}$ has a monotonically decreasing magnitude — a standard outer loop can now be designed on it.
+> 3. **Outer PI-Lead on $G_{tilt,\text{post}}$** at $\omega_c = 15$ rad/s, $\gamma_M = 60°$, $N_i = 3$. PI zero $\tau_i = 0.200$ s. Phase balance wants $+34.25°$ of Lead, realised cheaply through the gyro ($\tau_d \dot\theta + \theta$ is a free ideal $(\tau_d s + 1)$ Lead) → $\tau_d = 0.0454$ s. Loop-gain solve gives $K_P = 1.1871$.
+> 4. **Verification.** `margin(L_tilt)` reports $\omega_c = 15.00$ rad/s, $\gamma_M = 60.00°$, $GM = -5.44$ dB (a **lower** bound on $|K|$ for $P = 1$ plants — the negative sign is the normal signature of an unstable-plant design, not a bug), $0$ RHP closed-loop poles.
+> **Result.** $K_p = 1.1871$, $\tau_i = 0.200$, $\tau_d = 0.0454$, $\tau_{i,\text{post}} = 0.1224$. **Firmware `[cbal] kp` is entered negative** — the firmware Balance block does not absorb the Method 2 sign flip internally; a positive `kp` produces a positive-feedback runaway (hard-won finding from the first campaign).
+> **How Task 3 uses it.** Paste the gains, then run `design_task3_velocity`. That script re-linearises the Simulink model with both Tasks 1 and 2 closed and takes the output from `Kpvel_gain` (which produces $\theta_\text{ref}$) to wheel velocity. Because the balance loop has just stabilised the pendulum mode, the resulting $G_{vel,\text{outer}}$ has $0$ RHP poles — Task 3 designs against a stable plant (apart from an RHP *zero*, which is physics-level and can't be controlled away).
 
 `design_task2_balance`
 
@@ -239,12 +237,10 @@ See the _firmware sign_ note at the bottom for why `[cbal] kp` is entered as neg
 ## Task 3 — Velocity PI
 
 > [!tldr]+ Task 3 summary
-> **Script:** `design_task3_velocity` — linearises with Tasks 1 + 2 closed.
-> **Plant:** 9th-order $G_{vel,\text{outer}}(s) = \theta_{ref} \to v$. $0$ RHP poles (balance stabilised it), $1$ RHP zero at $+8.67$ rad/s (physics — non-minimum-phase balancing), free integrator at the origin.
-> **Bandwidth capped by the RHP zero:** rule of thumb $\omega_c \leq z/5 \approx 1.70$ rad/s → pick $\omega_c = 1$ for safety.
-> **Specs:** $\omega_c = 1$ rad/s, $\gamma_M \geq 60°$, $N_i = 3$ → $\tau_i = 3.000$ s. Natural $\gamma_M \approx 69°$ with PI alone, no Lead needed.
-> **Result:** $K_P = 0.1532$; achieved $\omega_c = 1.00$, $\gamma_M = 68.98°$, $GM = 6.21$ dB.
-> **Commit:** `Kpvel = 0.1532; tivel = 3.0000;`
+> **Purpose.** Wrap a velocity loop around the stabilised balance loop so that commanding $v_\text{ref}$ produces the desired forward speed. This is the layer where the robot starts to actually *move* in a controlled way: the balance loop was only keeping the robot upright; Task 3 makes it track a commanded speed while upright.
+> **What this section shows.** With Tasks 1 + 2 closed and active in the workspace, `linearize` on the path $\theta_\text{ref} \to v$ produces a 9th-order $G_{vel,\text{outer}}$ with $0$ RHP poles (the balance loop has done its job) but **one RHP zero at $+8.67$ rad/s** — the physics-level non-minimum-phase signature of inverted-pendulum locomotion: the robot must first roll *backward* before the body can tilt forward. That zero fundamentally caps the achievable bandwidth at $\omega_c \leq z/5 \approx 1.70$ rad/s. We pick a conservative $\omega_c = 1$ rad/s. At that crossover the plant plus PI already give $\gamma_M \approx 69°$ natively, so **no Lead is needed**.
+> **Result.** $K_p = 0.1532$, $\tau_i = 3.000$ s. Achieved $\omega_c = 1.00$ rad/s, $\gamma_M = 68.98°$, $GM = 6.21$ dB.
+> **How Task 4 uses it.** Paste, then run `design_task4_position`. It linearises `pos_ref → x` with Tasks 1 + 2 + 3 all closed. The RHP zero at $+8.67$ is still there (physics), but a new feature appears at the origin: a **free integrator**, because position is the integral of velocity. That free integrator is what lets Task 4 use a *pure P* controller — no I-term needed for zero step-tracking error.
 
 `design_task3_velocity`
 
@@ -283,13 +279,10 @@ tivel = 3.0000;
 ## Task 4 — Position P (+ tiny Lead, dropped for Simulink)
 
 > [!tldr]+ Task 4 summary
-> **Script:** `design_task4_position` — linearises with Tasks 1 + 2 + 3 closed.
-> **Plant:** 11th-order $G_{pos,\text{outer}}(s) = x_{ref} \to x$. $0$ RHP poles, $1$ RHP zero at $+8.67$ rad/s (inherited from T3), free integrator at the origin (velocity → position) → Type-1 plant, pure P is enough for zero step-tracking error.
-> **Specs:** $\omega_c = 0.6$ rad/s (iterated to clear peak-velocity spec $v > 0.7$ m/s on a $2$ m move).
-> **Phase balance:** $\phi_G(j0.6) = -121.74°$ → Lead needed $+1.74°$, i.e.\ $\tau_d = 0.0505$ s (ideal).
-> **Lead dropped** in firmware: $(\tau_d s + 1)$ is improper and Simulink's `Transfer Fcn` rejects it. $1.74°$ PM cost accepted; $25$ dB gain margin dominates robustness.
-> **Result:** $K_P = 0.5411$; achieved $\omega_c = 0.60$, $\gamma_M = 60.00°$ (with ideal Lead) or $\approx 58.3°$ (without, firmware), $GM = 25.34$ dB. Sim 2 m step: peak $v = 0.760$ m/s ✓.
-> **Commit:** `Kppos = 0.5411; tdpos = 0;` (Lead dropped).
+> **Purpose.** Design the outermost loop — the position controller that turns a commanded $x_\text{ref}$ (via the `topos` mission command) into motion. This is the layer the assignment's 2 m step-move mission actually exercises; everything below has to already be rock-solid for Task 4's tight $\omega_c$ to make sense.
+> **What this section shows.** With Tasks 1 + 2 + 3 closed, the linearised plant $G_{pos,\text{outer}}(s) = \text{pos}_\text{ref} \to x$ is 11th-order with $0$ RHP poles, the familiar RHP zero at $+8.67$ rad/s (still physics — inherited from Task 3), **and a free integrator at the origin** (position is $\int$ velocity). The free integrator makes the plant Type-1, so a pure proportional controller drives the step-tracking error to zero without any extra I-term. $\omega_c = 0.6$ rad/s is picked by iterating on the 2 m-step linear-model response until the peak velocity clears the $0.7$ m/s spec. Phase balance wants only $+1.74°$ of Lead — tiny. The ideal Lead is $(\tau_d s + 1)$ with $\tau_d = 0.0505$ s, but that's an improper transfer function and Simulink's `Transfer Fcn` block rejects it. Rather than add a proper Lead with a filter pole, the Lead is **dropped in firmware**. The $1.74°$ PM cost is noise; the $25$ dB gain margin dominates robustness.
+> **Result.** $K_p = 0.5411$, $\tau_d = 0$ (Lead dropped). Achieved $\omega_c = 0.60$ rad/s, $\gamma_M = 60.00°$ with ideal Lead or $\approx 58.3°$ in firmware, $GM = 25.34$ dB. Simulink 2 m step reaches $2.00$ m with $\approx 7.5\%$ overshoot and peak velocity $0.760$ m/s — above the $0.7$ m/s mission spec.
+> **Closing the cascade.** This is the outermost loop; no further design scripts. All four layers are set; the cascade is ready for the Simulink sanity sim (10° IC recovery and 2 m step — see figures above) and for the hardware validation campaign (Tests 0 / 3a / 3b / 4, summarised further down).
 
 `design_task4_position`
 
