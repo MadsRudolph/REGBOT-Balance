@@ -206,6 +206,24 @@ First attempt: Day 4 wheels-up identification gave $K_{pwv} = 3.31$ with 121.6°
 
 Firmware sign: `[cbal] kp = -1.1999` (the firmware Balance block does not absorb the Lecture-10 Method-2 sign internally — finding from the v1 campaign, still applies).
 
+> [!warning] Design-time graphs in the Task 1–4 sections are still v1 (pending MATLAB regeneration)
+> The *numerical derivations* in the Task 1–4 sections below use the v3 on-floor values, but the embedded **design-time plots** (Bode, Nyquist, pole-zero, closed-loop step, IC response) are byte-identical to the first-campaign (Day 4 wheels-up) versions — the design scripts weren't re-run with image-save enabled during the redesign. Curves, axis limits, and margin markers on those plots therefore do not exactly match the numeric values quoted in the surrounding text. The two **Simulink sanity-sim screenshots** (Task 2 $\theta_0 = 10°$ recovery and Task 4 2 m step) *are* v3 — they use the `_v3.png` variants and match the v3 gains.
+>
+> **Affected plots** (all in `docs/images/` and `Exercises/Work/regbot/Images/`, no `_v3` variant yet):
+> - Task 1: `regbot_Gwv_bode.png`, `regbot_Gwv_pzmap.png`, `regbot_Gwv_pzmap_zoom.png`, `regbot_task1_bode.png`, `regbot_task1_step.png`
+> - Task 2: `regbot_Gtilt_bode.png`, `regbot_Gtilt_pzmap.png`, `regbot_Gtilt_pzmap_zoom.png`, `regbot_Gtilt_nyquist.png`, `regbot_task2_bode_post.png`, `regbot_task2_nyquist_post.png`, `regbot_task2_loop_bode.png`, `regbot_task2_ic_response.png`, `regbot_task2_sim_push.png` (push test)
+> - Task 3: `regbot_task3_plant_pz.png`, `regbot_task3_loop_bode.png`, `regbot_task3_step.png`
+> - Task 4: `regbot_task4_plant_pz.png`, `regbot_task4_loop_bode.png`
+>
+> **To regenerate (from `REGBOT-Balance-Assignment/simulink/` in MATLAB):**
+> 1. Open `regbot_mg.m` once (or run it) so the v3 gains are in the base workspace.
+> 2. Run `design_task2_balance` — saves `Gwv/Gtilt` Bode, pzmaps, nyquist, `task2_bode_post`, `task2_nyquist_post`, `task2_ic_response`.
+> 3. Run `design_task3_velocity` — saves `task3_plant_pz`.
+> 4. Run `design_task4_position` — saves `task4_plant_pz`.
+> 5. Open-loop Bode plots (`regbot_task1_bode.png`, `regbot_task{2,3,4}_loop_bode.png`) and closed-loop step plots (`regbot_task1_step.png`, `regbot_task{2,3,4}_step.png`) are saved by the one-liners at the end of each design script, via `figure; margin(L_*);  saveas(gcf, fullfile(IMG_DIR, '…'))` / `figure; step(T_*); saveas(...)` — check the tail of each script and add a save call if it's missing.
+> 6. Task 2 push-disturbance sim: re-run `regbot_1mg.slx` with v3 gains and the 1 N / 0.1 s `Push Newton` active; save the scope snapshot as `regbot_task2_sim_push.png` (or save a new `…_v3.png` and update the link here).
+> 7. The Task 2 / Task 4 Simulink sanity sims are already v3 (`regbot_task2_sim_recovery_10deg_v3.png`, `regbot_task4_sim_step_v3.png`) and already linked.
+
 ### Key shifts vs. the first-attempt (v1) design
 
 | Quantity       | v1 (Day 4 wheels-up) | v3 (Day 5 on-floor) | Change                                                        |
@@ -490,13 +508,13 @@ In practice this means the Task 2 workflow is: (i) plot $G_{tilt}$ on Nyquist, (
 
 **Computed values:**
 
-| Parameter                      | Value                                |
-| ------------------------------ | ------------------------------------ |
-| $\tau_i = N_i/\omega_c$        | **0.100 s**                          |
-| $K_p$ (from $|L(j\omega_c)| = 1$) | **13.2037**                       |
-| Achieved $\omega_c$            | 30.00 rad/s                          |
-| Achieved $\gamma_M$            | 82.85° (well above 60° spec)         |
-| Achieved GM                    | $\infty$                             |
+| Parameter                      | Value                        |
+| ------------------------------ | ---------------------------- |
+| $\tau_i = N_i/\omega_c$        | **0.100 s**                  |
+| $K_p$ (from $L(j\omega_c)= 1$) | **13.2037**                  |
+| Achieved $\omega_c$            | 30.00 rad/s                  |
+| Achieved $\gamma_M$            | 82.85° (well above 60° spec) |
+| Achieved GM                    | $\infty$                     |
 
 **Controller:**
 $$C_{wv}(s) = 13.2037 \cdot \frac{0.1s + 1}{0.1s}$$
@@ -728,8 +746,8 @@ All four parameters (`tipost`, `titilt`, `tdtilt`, `Kptilt`) are written to the 
 
 With `startAngle = 10°` and no push disturbance, the full Simulink model (non-linear plant + ±9 V limiter + corrected controller topology) recovers cleanly:
 
-![[regbot_task2_sim_recovery_10deg.png]]
-*Recovery from $\theta_0 = 10°$ initial tilt in Simulink. Yellow = pitch in radians (starts at $\approx 0.175$ rad $= 10°$, settles to $0$). Blue = motor voltage in volts (peak $\approx 1.3$ V, steady $\approx 0.5$ V). No saturation — well below the $\pm 9$ V limit. Settling time $\approx 1$ s, matching the linear-model prediction.*
+![[regbot_task2_sim_recovery_10deg_v3.png]]
+*Recovery from $\theta_0 = 10°$ initial tilt in Simulink with the Day 5 on-floor (v3) gains. Yellow = pitch in radians ($\approx 0.175$ rad $\to 0$). Blue = motor voltage in volts (peak $\approx 2.8$ V, no saturation). Pitch reaches $0$ within $\approx 0.3$ s and fully settles by $t \approx 2$ s — faster than the first-attempt cascade because the inner loop is now at its designed bandwidth.*
 
 The small non-zero steady-state voltage ($\approx 0.5$ V) is expected with no velocity outer loop closed: the inner wheel-speed loop just needs a small bias to hold the wheels against residual position offset. It vanishes once Task 3 (velocity outer loop) wraps around this.
 
@@ -1033,16 +1051,16 @@ Kept separation $\omega_{c,\text{pos}} / \omega_{c,\text{vel}} = 0.6$ (1.67× in
 
 After re-linearising `Gpos,outer` against the Day 5 cascade (Tasks 1, 2, 3 redesigned), the phase-balance computation gives:
 
-| Parameter | Value | Source |
-|---|---|---|
-| $\omega_{c,\text{pos}}$ | $0.6$ rad/s | Iterated spec |
-| $\angle G_{pos,\text{outer}}(j\omega_c)$ | $-122.9°$ | `bode(Gpos_outer, 0.6)` |
-| $\phi_\text{Lead}$ required | $+2.85°$ | $-180 + \gamma_M - \phi_G$ |
-| $K_{p,\text{pos}}$ | **$0.5411$** | $1/|L(j\omega_c)|$, $|G_{pos,\text{outer}}(j\omega_c)| = 1.848$ |
-| $\tau_{d,\text{pos}}$ | $0$ (Lead dropped) | $(\tau_d s + 1)$ improper for Simulink — see below |
-| Achieved $\gamma_M$ | $\approx 57°$ | $\approx 3°$ below target after Lead drop |
-| Achieved GM | $25.17$ dB | `margin()` |
-| Sim peak $v$ (2 m step) | $0.753$ m/s | above $0.7$ m/s spec ✓ |
+| Parameter                                | Value              | Source                                                     |
+| ---------------------------------------- | ------------------ | ---------------------------------------------------------- |
+| $\omega_{c,\text{pos}}$                  | $0.6$ rad/s        | Iterated spec                                              |
+| $\angle G_{pos,\text{outer}}(j\omega_c)$ | $-122.9°$          | `bode(Gpos_outer, 0.6)`                                    |
+| $\phi_\text{Lead}$ required              | $+2.85°$           | $-180 + \gamma_M - \phi_G$                                 |
+| $K_{p,\text{pos}}$                       | **$0.5411$**       | $1/L(j\omega_c)$, $G_{pos,\text{outer}}(j\omega_c)= 1.848$ |
+| $\tau_{d,\text{pos}}$                    | $0$ (Lead dropped) | $(\tau_d s + 1)$ improper for Simulink — see below         |
+| Achieved $\gamma_M$                      | $\approx 57°$      | $\approx 3°$ below target after Lead drop                  |
+| Achieved GM                              | $25.17$ dB         | `margin()`                                                 |
+| Sim peak $v$ (2 m step)                  | $0.753$ m/s        | above $0.7$ m/s spec ✓                                     |
 
 **Controller:**
 $$C_{\text{pos}}(s) = 0.5411$$
@@ -1092,8 +1110,8 @@ flowchart LR
 
 With the above wiring and the committed gains, simulating a 2 m step at $t = 1$ s:
 
-![[regbot_task4_sim_step.png]]
-*Task 4 regulation: 2 m position step at $t = 1$ s. Blue = $x$ position (0 → 2 m, ~8 % overshoot, settles within ~6 s of the step). Green = wheel velocity (peak $\approx 0.8$ m/s — matches the linear-model prediction of 0.797 m/s, satisfies the > 0.7 m/s spec). Yellow = motor voltage after $\pm 9$ V limiter (peak $\approx 3.3$ V, two bumps reflecting the 1.67× separation between position and velocity loops). Red = pitch (stays near zero — robot leans briefly to accelerate, then levels).*
+![[regbot_task4_sim_step_v3.png]]
+*Task 4 regulation with v3 gains: 2 m position step at $t = 1$ s. Blue = $x$ position ($0 \to 2.15$ m peak, $\approx 7.5\%$ overshoot, settles at $2.00$ m). Green = wheel velocity (peak $\approx 0.80$ m/s, comfortably above the $0.7$ m/s spec floor). Yellow = motor voltage after $\pm 9$ V limiter (peak $\approx 3$ V, no saturation). Red = pitch (small excursions, robot leans briefly to accelerate, returns to $0$).*
 
 > [!success] Task 4 simulation validated
 > - Position tracks the 2 m step with a small overshoot and zero steady-state error
