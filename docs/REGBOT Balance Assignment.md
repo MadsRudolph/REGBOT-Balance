@@ -432,28 +432,90 @@ See the _firmware sign_ note at the bottom for why `[cbal] kp` is entered as neg
 
 `design_task3_velocity`
 
-With Tasks 1 + 2 closed, linearise `θ_ref` → `wheel_vel_filter`. Result is 9th-order:
+### What this loop does
+
+Task 3 wraps a velocity loop around the stabilised balance loop — this is where the robot starts *moving* on purpose. Task 2 was content to keep the pendulum vertical; Task 3 commands a wheel velocity by asking Task 2 to tilt the body the right amount (pitch forward to accelerate, pitch back to decelerate). In the cascade hierarchy, Task 3's output is $\theta_\text{ref}$, which is Task 2's input.
+
+Controller choice: **PI, no Lead**. The plant $G_{vel,\text{outer}}$ already has a free integrator at the origin (inherited from Task 2's post-integrator), so the outer loop is Type-1 before we touch it. Strictly a plain P would give $e_{ss} = 0$ on a step, but we add PI to lift the loop to Type-2 for better disturbance rejection and because the course cookbook is PI unless something argues otherwise. No Lead — Step 2 shows the natural PM is $\sim 69°$ already.
+
+### The plant
+
+With Tasks 1 + 2 closed, `linearize` from $\theta_\text{ref}$ → `wheel_vel_filter` gives a 9th-order $G_{vel,\text{outer}}$:
 
 ![[regbot_task3_plant_pz.png]]
 *$G_{vel,\text{outer}}$ pole-zero map. $0$ RHP poles (balance loop has stabilised the pendulum); orange ring marks the physics-fixed RHP zero at $+8.67$ rad/s; free integrator at the origin.*
 
-**RHP zero limits the bandwidth.** Rule of thumb: $\omega_c \leq z/5 \approx 1.70$ rad/s. Pick $\omega_c = 1$ for safety.
+Key features:
 
-**Specs:** $\omega_c = 1$ rad/s, $\gamma_M \geq 60°$, $N_i = 3$. PI zero: $\tau_i = 3/1 = 3.000$ s.
+- **Zero RHP poles** — the balance loop did its job. The pendulum's formerly unstable falling mode is now in the LHP.
+- **One RHP zero at $+8.67$ rad/s** — *non-minimum-phase*. This is physics-level and inherited from Task 2's setup: to tilt the body forward (to accelerate), the wheels must first roll backward to get the mass over the pivot. That "wrong-way-first" transient is the RHP-zero signature.
+- **Free integrator at the origin** — from Task 2's post-integrator. Makes the outer loop Type-1 for free.
 
-**Phase balance at $\omega_c = 1$ rad/s.** MATLAB's continuous-phase convention prints $\angle G_{vel,\text{outer}}(j1) = +267.42°$; the physically meaningful value is $-92.58°$. With PI $-18.43°$, total open-loop phase $\approx -111°$ → natural $\gamma_M \approx +69°$. **No Lead needed**; PI alone clears the $60°$ spec with ${\sim}9°$ to spare.
+### The RHP-zero bandwidth limit (important!)
 
-**Gain.** $|C_{PI}\,G_{vel,\text{outer}}|(j1) = 6.5294$ → $K_P = 1/6.5294 = 0.1532$.
+An RHP zero at $z = +8.67$ rad/s puts a **fundamental cap** on closed-loop bandwidth. Unlike an LHP zero (which adds $+90°$ of phase), an RHP zero adds $-90°$ of phase with the *same* $+20$ dB/dec magnitude rise — so pushing $\omega_c$ close to $z$ eats the phase margin fast. Standard rule of thumb:
+
+$$\omega_c \;\lesssim\; z/5 \;\approx\; 1.73 \text{ rad/s}$$
+
+This is not a tuning preference — it's a hard physics limit. Pushing past it trades phase margin for a "wrong-way-first" overshoot in the step response, with diminishing returns. We pick $\omega_c = 1$ rad/s for safety margin, well below the limit.
+
+### Specifications, translated to the frequency domain
+
+| Spec | Value | What it means |
+|---|---|---|
+| Crossover $\omega_c$ | $1$ rad/s | Capped by $z/5 \approx 1.73$ rad/s (RHP-zero limit). Also ${\sim}15\times$ slower than Task 2's $15$ rad/s so Task 2 sees it as instant. |
+| Phase margin $\gamma_M$ | $\geq 60°$ | Course default. Clears comfortably without Lead. |
+| $N_i$ | $3$ | Same as Tasks 1 & 2 — PI zero at $\omega_c/3 = 0.333$ rad/s. |
+
+### Step 1 — Place the PI zero at $\omega_c/N_i$
+
+$\tau_i = N_i/\omega_c = 3/1 = 3.000$ s, giving $C_{PI,\text{shape}} = (\tau_i s + 1)/(\tau_i s)$ with its zero at $1/\tau_i = 0.333$ rad/s. Three times below crossover, same structure as Task 1 — nothing exotic.
+
+**In MATLAB** (lines 87–88): `tau_i_vel = Ni_vel / wc_vel; C_PI_vel = (tau_i_vel*s + 1)/(tau_i_vel*s);`.
+
+### Step 2 — Phase balance: do we need a Lead?
+
+**Plug in the numbers at $\omega_c = 1$ rad/s:**
+
+| Term | Value | Note |
+|---|---|---|
+| $\angle G_{vel,\text{outer}}(j1)$ | $-92.58°$ physical | MATLAB prints $+267.42°$ — see callout below |
+| $\phi_{PI} = \arctan(3) - 90°$ | $-18.43°$ | Standard $N_i = 3$ cost |
+| Total open-loop phase | $\approx -111°$ | |
+| Natural $\gamma_M$ | $\approx +69°$ ✓ | $\sim 9°$ above spec — no Lead needed |
+
+**No Lead.** Same reasoning as Task 1: plant+PI already clear $60°$. A Lead would only pay off if we needed bandwidth higher than the RHP zero allows — we don't, so skip it.
+
+> [!note] MATLAB's continuous-phase convention
+> Calling `bode(Gvel_outer, wc_vel)` returns the phase with continuous unwrap applied, *not* wrapped into $(-180°, 180°]$. For this 9th-order plant the unwrap adds $+360°$ before reaching $\omega_c$, so the script prints $+267.42°$ where the physics says $-92.58°$. They're the same angle; just mentally subtract $360°$. The same unwrap shows up on the Bode plot in Step 4 — the phase curve near $\omega_c$ sits around $+240°$, which reads as $-120°$ physically, giving $\gamma_M = 60° + 9°$.
+
+**In MATLAB** (lines 95–111). Script computes `phi_Lead = -180 + gamma_M_spec - phi_G - phi_PI` and takes the `phi_Lead <= 0` branch → `tau_d_vel = 0; C_Lead_vel = tf(1)`. The printed `"Lead NOT needed — phase margin already met by PI alone"` is the confirmation.
+
+### Step 3 — Solve $K_p$ so $|L(j\omega_c)| = 1$
+
+$|C_{PI}\,G_{vel,\text{outer}}|(j1) = 6.5294$ → $K_p = 1/6.5294 = 0.1532$.
+
+**The aha.** This is the *opposite* situation to Task 1's $K_p = 13.2$: the unscaled loop magnitude at $\omega_c = 1$ is already $20\log_{10}(6.53) = +16.3$ dB *above* $0$ dB, so $K_p < 1$ is needed to push it *down* to crossover. The plant has a lot of low-frequency gain from the free integrator — shape is correct, we just need to attenuate.
 
 $$\boxed{\;C_\text{vel}(s) \;=\; 0.1532 \cdot \frac{3\,s + 1}{3\,s}\;}$$
 
-**Verification** (from `margin(L_{vel})`): $\omega_c = 1.00$ rad/s, $\gamma_M = 68.98°$, $GM = 6.21$ dB (at $25.4$ rad/s), $0$ RHP closed-loop poles.
+**In MATLAB** (lines 116–117): `magL = squeeze(bode(C_PI_vel * Gvel_outer, wc_vel)); Kp_vel = 1 / magL;`. Same single-frequency `bode()` trick as Task 1.
+
+### Step 4 — Verification
+
+From `margin(L_vel)`: $\omega_c = 1.00$ rad/s, $\gamma_M = 68.98°$, $GM = 6.21$ dB (at $25.4$ rad/s), $0$ RHP closed-loop poles. All match Step 2's hand calc: PM cleared by $\sim 9°$, and zero RHP closed-loop poles means Task 2's stabilisation carried through cleanly.
 
 ![[regbot_task3_loop_bode.png]]
-*Open-loop Bode $L = C_\text{vel}\,G_{vel,\text{outer}}$. Title: $Gm = 6.21$ dB, $Pm = 69°$ at $1$ rad/s. The continuous-phase unwrap puts the marker near $+240°$ = $-120°$ physical, matching $-180° + 60° + {\sim}9°$ PM excess.*
+*Open-loop Bode $L = C_\text{vel}\,G_{vel,\text{outer}}$. Title: $Gm = 6.21$ dB, $Pm = 69°$ at $1$ rad/s.*
+
+> [!tip]+ How to read this Bode plot
+> Magnitude crossing at $\omega_c = 1$ rad/s (designed). The phase curve at $\omega_c$ reads near $+240°$ because of MATLAB's continuous-phase unwrap — subtract $360°$ to get $-120°$, so $\gamma_M = 180° - 120° = 60°$ plus the $\sim 9°$ slack = $69°$. The gain-margin crossing at $\omega = 25.4$ rad/s is where the phase ducks below $-180°$ (= $+180°$ after another unwrap) — a high-frequency feature of the 9th-order plant, far above $\omega_c$, so it only limits how much $K_p$ could be scaled up, not loop behaviour near crossover. $GM = 6.21$ dB means $K_p$ could roughly double before hitting the next instability boundary.
 
 ![[regbot_task3_step.png]]
-*Closed-loop step response. Zero steady-state error; rise time of order $1/\omega_c \approx 1$ s. No visible inverse response because $\omega_c$ is safely below the RHP zero.*
+*Closed-loop step response: $v_\text{ref}$ → wheel velocity, 1 m/s step.*
+
+> [!tip]+ How to read this step response
+> Rise time of order $1/\omega_c \approx 1$ s — consistent with a first-order-ish closed loop at the designed bandwidth. Zero steady-state error (Type-2 loop: plant's free integrator + PI's integrator). **No visible inverse response**: because $\omega_c = 1$ sits well below the RHP zero at $8.67$, the closed-loop bandwidth doesn't excite the "wrong-way-first" mode. If we'd pushed $\omega_c$ up near $z$, the step would dip *negative* briefly at $t \approx 0$ — that's the visible RHP-zero signature we're avoiding.
 
 Paste into `regbot_mg.m`:
 
