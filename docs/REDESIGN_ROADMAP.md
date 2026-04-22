@@ -43,8 +43,8 @@ Detailed plan: see Claude's plan file (local to the working machine).
     - [x] **Test 3a v3 (first run): drift 0.475 m** (tilt std 2.04° — 57% tighter than v2's 4.76°, no late oscillations; drift worsened because tilt-offset bias ≈ +1.1°).
     - [x] **Tilt-offset recalibrated (Y = 175) + Test 3a v3 re-run: drift 0.505 m** (marginal fail; bias essentially unchanged at +1.11° despite recal; tilt std 1.87° — 61% tighter than v2). Bias is either a calibration residual (one more iteration to Y ≈ 176 would likely fix it) or a physical asymmetry. Tests 3b/4 outer loops make the bias moot, so moving on.
     - [x] **Reportable Test 3a = v2 (0.343 m, passes spec).** v3 balance-tightness improvement cited separately.
-    - [ ] Test 3b v3
-    - [ ] Test 4 v3
+    - [x] **Test 3b v3: PASS** at 0.8 m/s. Completed square, 359.8° heading. Peak tilt +25.5° (v2 was +22°); tilt std 5.03° (tighter than v2's 5.72°). **Motor voltage peak 7.31 V (91% of ±8 V budget)** — v2 had 4.67 V; the higher Kpwv costs voltage headroom. Still passes spec.
+    - [ ] Test 4 v3 (watch voltage — 3b got close to saturation)
 - [ ] **Phase 7** — Documentation sweep (`docs/*.md` + Report LaTeX)
 - [ ] **Phase 8** — Merge `day5-redesign` → `main` on both submodules (`--no-ff`), then bump DTU main pointers
 
@@ -63,3 +63,4 @@ Detailed plan: see Claude's plan file (local to the working machine).
 | 2026-04-22 | 6 | **Test 0 v3 PASS.** Rise to 0.27 m/s in 0.012 s (vs 0.329 s in v1 — 27× faster). L/R 0.76% match. Voltage peak 2.60 V, ripple higher than v1 (noise/bandwidth tradeoff from Kp = 13.2). Design crossover of 30 rad/s finally materialises on hardware. |
 | 2026-04-22 | 6 | **Test 3a v3 PASS** on drift (0.475 m, spec 0.5). Tilt std **2.04° (−57% vs v2)** — balance is clearly tighter. No late oscillation. But drift increased from 0.343 to 0.475 m because tilt-offset bias grew from +0.78° to +1.13° (calibration drift between campaigns). Cleanest fix is a tilt-offset re-cal. |
 | 2026-04-22 | 6 | **Test 3a v3 re-run after tilt-offset recal (Y=175):** drift 0.505 m (marginal fail of 0.5 spec). Bias unchanged at +1.11° — either one more calibration iteration needed (Y ≈ 176), or the 1° is a physical CG/wheel-radius asymmetry and cannot be calibrated out. Tilt std 1.87° — 61% tighter than v2. **Decision:** use v2 3a (0.343 m) as the reportable 3a; v3 improvement documented via tilt-std. Tests 3b/4 will not see this because the outer loops regulate it away. |
+| 2026-04-22 | 6 | **Test 3b v3 PASS** at 0.8 m/s. Completed full square, 359.8°. Peak tilt +25.5° (v2 +22°), tilt std 5.03° (tighter). **Motor voltage peak 7.31 V (91 % of ±8 V)** — 57 % closer to saturation than v2's 4.67 V, because 4× Kpwv makes the inner PI respond harder to corner vel_ref steps. Classic speed-for-margin trade from the redesign. Still within spec. |

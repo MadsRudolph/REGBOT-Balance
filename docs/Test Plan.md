@@ -172,27 +172,40 @@ vel=0
 ```
 
 **Pass criteria:**
-- [ ] Completes 4 sides + 3 turns without falling
-- [ ] Cumulative heading ≈ 360° (previous v2 run: 359.8°)
-- [ ] Peak wheel velocity > 0.8 m/s on turn (v2 baseline: 1.07 m/s)
-- [ ] Motor voltage within ±8 V (v2 baseline peak: 4.67 V)
-- [ ] No visible limit-cycle growth
+- [x] Completes 4 sides + 3 turns without falling
+- [x] Cumulative heading ≈ 360° — **359.8°** (0.06% error)
+- [x] Peak wheel velocity > 0.8 m/s on turn — **1.31 m/s**
+- [x] Motor voltage within ±8 V — **7.31 V** (91% of budget, tight)
+- [x] No visible limit-cycle growth
 
 **Log file — full absolute path to paste into the GUI:**
 ```
 C:\Users\Mads2\DTU\4. Semester\Linear Control Design\REGBOT-Balance-Assignment\logs\test3b_square_0.8ms_v3_onfloor_2026-04-22.txt
 ```
 
-**Notes (post-test):**
-- Speed used:
-- Completed square? Y/N
-- Side length measured:
-- Peak tilt:
-- Peak voltage:
-- Compare to v2 square (+22° tilt, 4.67 V):
-- Plots:
-    - XY trajectory: `figures/test3b_xy_v3_onfloor_2026-04-22.png` ← updated "cool figure" for the report
-    - Time series: `figures/test3b_timeseries_v3_onfloor_2026-04-22.png`
+**Notes (post-test):** ✅ **PASS (2026-04-22)**
+
+| Metric | v2 baseline | **v3 measured** |
+|---|---|---|
+| Speed used | 0.8 m/s | 0.8 m/s |
+| Completed square | yes | **yes** |
+| Heading | 359.8° | 359.8° (identical) |
+| Side length | ~1.42 m | ~1.36 m (slightly smaller) |
+| Tilt peak | +22.0° | **+25.5°** |
+| Tilt std | 5.72° | 5.03° (8% tighter) |
+| Mean tilt on straights | ~3° | **+6.6°** |
+| Wheel vel peak | 1.07 m/s | **1.31 m/s** (faster outer wheel on corners) |
+| Motor voltage peak | 4.67 V | **7.31 V** (**91% of ±8 V budget**) |
+
+**Headline: voltage peak jumped from 4.67 V to 7.31 V.** That's 57% closer to saturation. Cause: Kpwv went 3.31 → 13.20 (4×), so the inner PI commands 4× the voltage slam on any sharp `vel_ref` change (corner entries / exits). Stable — but the margin for a heavier battery or higher payload is noticeably tighter.
+
+For the report this is a good illustration of the **noise/bandwidth/saturation trade-off** inherent in the redesign: v1 had ample voltage headroom because its effective inner-loop bandwidth was 4× slower than designed; v3 realises the designed 30 rad/s but at the cost of voltage peaks closer to the ±8 V saturation limit.
+
+![[test3b_xy_v3_onfloor_2026-04-22.png]]
+*Test 3b v3 XY trajectory at 0.8 m/s (blue) vs v2 baseline (grey). Same shape, same heading (359.8°), slightly smaller span (~1.36 m vs 1.42 m) because corner trajectories are slightly tighter.*
+
+![[test3b_timeseries_v3_onfloor_2026-04-22.png]]
+*Test 3b v3 time series. Top: tilt — std is tighter but peaks are larger (+25.5° vs +22° on v2). Second: wheel velocities track vref well; peak outer wheel 1.31 m/s on turns. Third: XY position ramps. Bottom: motor voltage peaks 7.31 V on corner transients — closest to the ±8 V limit seen so far in the campaign.*
 
 ---
 
