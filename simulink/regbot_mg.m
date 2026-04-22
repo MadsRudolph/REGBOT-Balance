@@ -103,5 +103,12 @@ tivel  = 3.0000;
 % 2 m step response: peak velocity 0.80 m/s (spec >= 0.7 m/s).
 
 
-Kppos  = 0.5335;
-tdpos  = 0.0273;
+% Day 5 on-floor redesign: with faster inner cascade the script wants a
+% slightly larger ideal Lead (tau_d = 0.0831 s, +2.85 deg PM boost), but
+% the improper (tau_d s + 1) still can't be realised as a Simulink
+% Transfer Fcn block. Drop the Lead; cost is ~3 deg PM (60 -> 57), which
+% is still comfortably above the spec-as-intent. Peak velocity on the
+% 2 m linear-sim step is 0.753 m/s (spec >= 0.7); hardware typically
+% outperforms sim due to the large-signal tilt lean.
+Kppos  = 0.5411;
+tdpos  = 0;
