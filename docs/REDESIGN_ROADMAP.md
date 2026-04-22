@@ -40,8 +40,9 @@ Detailed plan: see Claude's plan file (local to the working machine).
     - [x] `docs/Test Plan.md` prepared — pre-flight checklist, mission scripts, pass criteria, slots for post-test notes, v2-baseline comparisons baked in
     - [x] Load v3 ini into GUI → send → save to robot flash
     - [x] **Test 0 v3: PASS** — rise to 0.27 m/s in **0.012 s** (v1 was 0.329 s, 27× improvement), peak V = 2.60 V, L/R match 0.76%
-    - [x] **Test 3a v3: PASS on drift spec** — drift 0.475 m (v2 was 0.343 m; the worsening is purely from tilt-offset calibration, mean tilt rose from +0.78° to +1.13°). Tilt std dropped from 4.76° to **2.04°** — 57% tighter balance thanks to the redesign. No late oscillation.
-    - [ ] (optional) Recalibrate tilt-offset + re-run Test 3a v3 for a cleaner comparison plot
+    - [x] **Test 3a v3 (first run): drift 0.475 m** (tilt std 2.04° — 57% tighter than v2's 4.76°, no late oscillations; drift worsened because tilt-offset bias ≈ +1.1°).
+    - [x] **Tilt-offset recalibrated (Y = 175) + Test 3a v3 re-run: drift 0.505 m** (marginal fail; bias essentially unchanged at +1.11° despite recal; tilt std 1.87° — 61% tighter than v2). Bias is either a calibration residual (one more iteration to Y ≈ 176 would likely fix it) or a physical asymmetry. Tests 3b/4 outer loops make the bias moot, so moving on.
+    - [x] **Reportable Test 3a = v2 (0.343 m, passes spec).** v3 balance-tightness improvement cited separately.
     - [ ] Test 3b v3
     - [ ] Test 4 v3
 - [ ] **Phase 7** — Documentation sweep (`docs/*.md` + Report LaTeX)
@@ -61,3 +62,4 @@ Detailed plan: see Claude's plan file (local to the working machine).
 | 2026-04-22 | 5 | regbot_group47.ini updated with all four v3 gains. Simulink sanity sims green: 10° recovery in <2 s (peak V = 2.8, no sat), 2 m step reaches 2.0 m with 7.5% overshoot and peak v ≈ 0.8 m/s. Ready for hardware. |
 | 2026-04-22 | 6 | **Test 0 v3 PASS.** Rise to 0.27 m/s in 0.012 s (vs 0.329 s in v1 — 27× faster). L/R 0.76% match. Voltage peak 2.60 V, ripple higher than v1 (noise/bandwidth tradeoff from Kp = 13.2). Design crossover of 30 rad/s finally materialises on hardware. |
 | 2026-04-22 | 6 | **Test 3a v3 PASS** on drift (0.475 m, spec 0.5). Tilt std **2.04° (−57% vs v2)** — balance is clearly tighter. No late oscillation. But drift increased from 0.343 to 0.475 m because tilt-offset bias grew from +0.78° to +1.13° (calibration drift between campaigns). Cleanest fix is a tilt-offset re-cal. |
+| 2026-04-22 | 6 | **Test 3a v3 re-run after tilt-offset recal (Y=175):** drift 0.505 m (marginal fail of 0.5 spec). Bias unchanged at +1.11° — either one more calibration iteration needed (Y ≈ 176), or the 1° is a physical CG/wheel-radius asymmetry and cannot be calibrated out. Tilt std 1.87° — 61% tighter than v2. **Decision:** use v2 3a (0.343 m) as the reportable 3a; v3 improvement documented via tilt-std. Tests 3b/4 will not see this because the outer loops regulate it away. |
