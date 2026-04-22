@@ -1,20 +1,18 @@
 function img_dir = pick_image_dir()
 %PICK_IMAGE_DIR  Return the folder where design plots should be saved.
 %
-% Uses the Obsidian vault if available (Mads' setup); otherwise falls
-% back to <repo>/docs/images (created if missing). Set FORCE_LOCAL = true
-% inside this function to force the local docs/images path.
-FORCE_LOCAL = false;
+% Always the submodule's docs/images/ folder. Historically this helper
+% also mirrored into the DTU Obsidian vault, but docs/ is now the sole
+% source of truth for both notes and figures -- keeping two copies in
+% sync became a constant chore.
+%
+% The folder is created if missing so the first design-script run on a
+% fresh clone does not fail.
 
-here = fileparts(fileparts(mfilename('fullpath')));   % simulink/
-obs  = fullfile(here, '..', '..', '..', '..', 'Obsidian', 'Courses', ...
-    '34722 Linear Control Design 1', 'Exercises', 'Work', 'regbot', 'Images');
-docs = fullfile(here, '..', 'docs', 'images');
+here    = fileparts(fileparts(mfilename('fullpath')));   % simulink/
+img_dir = fullfile(here, '..', 'docs', 'images');
 
-if ~FORCE_LOCAL && exist(obs, 'dir')
-    img_dir = obs;
-else
-    img_dir = docs;
-    if ~exist(img_dir, 'dir'), mkdir(img_dir); end
+if ~exist(img_dir, 'dir')
+    mkdir(img_dir);
 end
 end

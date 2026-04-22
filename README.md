@@ -1,6 +1,6 @@
 # REGBOT Balance Assignment
 
-Team repository for MATLAB code, Simulink models, and mission scripts for the 34722 Linear Control Design 1 final assignment.
+Team repository for MATLAB code, Simulink models, mission scripts, and notes for the 34722 Linear Control Design 1 final assignment.
 
 ## Team (Group 47)
 
@@ -11,25 +11,23 @@ Team repository for MATLAB code, Simulink models, and mission scripts for the 34
 
 ## Structure
 
-| Folder | Contents |
-|--------|----------|
-| `src/` | MATLAB scripts for controller design (Tasks 1-4) |
-| `simulink/` | Simulink models (`regbot_1mg`, balance loop, etc.) and `regbot_mg.m` |
+| Folder / file | Contents |
+|---|---|
+| `simulink/` | Simulink starter model + `regbot_mg.m` parameter script + `design_task{1,2,3,4}.m` controller-design scripts (all plots saved into `docs/images/`) |
 | `data/` | Day 5 identification `.mat` files (shared so teammates can skip Day 5) |
-| `docs/` | Mirror of the REGBOT-relevant Obsidian notes (openable as a vault) |
-| `scripts/` | Utility scripts (e.g. `sync_docs.sh` to refresh `docs/` from the vault) |
-| `figures/` | Generated plots (Bode, step responses, XY-plane) |
-| `missions/` | REGBOT mission scripts (`.txt` files) |
-| `logs/` | Log files recorded from REGBOT during experiments |
-| `Report/` | Symlink to the Overleaf report repo (not tracked) |
+| `docs/` | Notes, progress log, test plan, handoff + per-task design write-ups. Open as an Obsidian vault for the best reading experience. |
+| `docs/images/` | Generated plots (Bode, Nyquist, pole-zero, step, hardware test PNGs). Single source of truth. |
+| `config/` | Firmware ini file (`regbot_group47.ini`) — the values flashed onto the robot |
+| `logs/` | Raw log files recorded from REGBOT during each hardware test |
+| `Report/` | Symlink to the Overleaf/LaTeX report repo (separate git repo) |
 
 ## Tasks
 
-- [ ] **Task 1** — Wheel speed PI controller (from Day 5 voltage-to-velocity TF)
-- [ ] **Task 2** — Balance controller with post-integrator (stabilises RHP pole)
-- [ ] **Task 3a** — Zero-velocity balance (drift within 0.5 m)
-- [ ] **Task 3b** — Square run at 0.8 m/s (side 1 m, turning radius 0.2 m)
-- [ ] **Task 4** — Position controller (2 m move, max speed > 0.7 m/s)
+- [x] **Task 1** — Wheel speed PI controller (Day 5 v2 on-floor plant)
+- [x] **Task 2** — Balance controller with post-integrator (Lecture 10, Method 2)
+- [x] **Task 3a** — Zero-velocity balance (drift within 0.5 m)
+- [x] **Task 3b** — Square run at 0.8 m/s
+- [x] **Task 4** — Position controller (2 m move, peak v > 0.7 m/s)
 
 ## Prerequisites
 
@@ -37,50 +35,29 @@ Team repository for MATLAB code, Simulink models, and mission scripts for the 34
 - REGBOT with calibrated gyro and tilt-offset
 - Starter files from Learn → Resources/REGBOT balance resources
 
-## Running the script
+## Running the design scripts
 
-Open MATLAB in `simulink/` and run `regbot_mg`. The script automatically:
-- Loads all REGBOT parameters
-- Defines the Day 5 plant
-- Designs the Task 1 wheel-speed PI controller
-- Linearizes the Simulink model to get $G_{wv}$ and $G_{tilt}$
-- Prints poles, zeros, and RHP pole counts
-- Generates Bode plots, pole-zero maps, and step responses
+Open MATLAB in `simulink/` and run the design scripts in order. Each one:
 
-### Plot output location
+1. `regbot_mg` — loads all REGBOT parameters, the Day 5 plant, and the committed gain block into the base workspace.
+2. `design_task1_wheel` — designs the wheel-speed PI against $G_{vel} = 2.198/(s+5.985)$, prints gains, saves Bode and closed-loop step PNGs.
+3. `design_task2_balance` — linearises the Simulink model with the wheel-speed loop closed, runs Lecture 10 Method 2 (sign check → post-integrator → PI-Lead), saves pole-zero, Nyquist, Bode, IC-response PNGs.
+4. `design_task3_velocity` — linearises with the balance loop closed, designs the velocity PI, saves plant-pz / open-loop Bode / step PNGs.
+5. `design_task4_position` — linearises with balance + velocity closed, designs the position P (+ tiny Lead), saves plant-pz / open-loop Bode / step PNGs.
 
-The script **auto-detects** where to save plots:
-
-- **If you have Mads's Obsidian vault** at `DTU/Obsidian/Courses/34722 Linear Control Design 1/...`, plots go there (so they embed directly in his notes).
-- **Otherwise**, plots are saved to `docs/images/`. When you open `docs/` as an Obsidian vault, the REGBOT Balance Assignment and Lesson 10 notes will show **your** freshly generated plots.
-
-> **Don't commit `docs/images/*.png` from a teammate machine** — the tracked
-> images are Mads's canonical versions synced from his vault. Your local
-> regenerations will show up as uncommitted diffs; leave them alone.
-
-To force output to `docs/images/` even when the vault is available, set `FORCE_DOCS = true` at the top of the script.
+All plots are written into `docs/images/` — that's the single source of truth for figures in both the Obsidian notes and the LaTeX report. Each script ends with a copy-paste gains block; paste those back into `regbot_mg.m` to commit the design.
 
 ## Reading the notes
 
-`docs/` mirrors the REGBOT-related Obsidian notes from Mads's vault:
+`docs/` is the canonical place for all project notes and is intended to be opened as an Obsidian vault ("Open folder as vault"). Wikilinks and image embeds resolve automatically.
 
-- [`docs/REGBOT Balance Assignment.md`](docs/REGBOT%20Balance%20Assignment.md) — running progress log, Tasks 1–4
-- [`docs/Lesson 10 - Unstable Systems and REGBOT Balance.md`](docs/Lesson%2010%20-%20Unstable%20Systems%20and%20REGBOT%20Balance.md) — lecture theory
+- [`docs/REGBOT Balance Assignment.md`](docs/REGBOT%20Balance%20Assignment.md) — progress log + per-task design write-ups
+- [`docs/Test Plan.md`](docs/Test%20Plan.md) — hardware test plan with recorded results
+- [`docs/HANDOFF.md`](docs/HANDOFF.md) — end-of-session handoff for continuation
+- [`docs/REDESIGN_ROADMAP.md`](docs/REDESIGN_ROADMAP.md) — phase tracker for the Day 5 on-floor redesign
 - [`docs/PLAN.md`](docs/PLAN.md) — early phase/role plan
-
-Open the `docs/` folder directly in Obsidian ("Open folder as vault") for the best reading experience — wikilinks and image embeds resolve automatically.
-
-Mads refreshes `docs/` with:
-
-```bash
-bash scripts/sync_docs.sh
-```
-
-Teammates: you never need to run this — just `git pull` and the latest notes are there.
+- [`docs/Lesson 10 - Unstable Systems and REGBOT Balance.md`](docs/Lesson%2010%20-%20Unstable%20Systems%20and%20REGBOT%20Balance.md) — lecture theory snapshot
 
 ## Report
 
-The LaTeX report lives in a separate repo:
-`git@github.com:MadsRudolph/REGBOT-Balance-assignment.git`
-
-Accessible here via the `Report/` symlink.
+The LaTeX report lives in a separate git repo (`git@github.com:MadsRudolph/REGBOT-Balance-assignment.git`) and is accessible here through the `Report/` symlink.
