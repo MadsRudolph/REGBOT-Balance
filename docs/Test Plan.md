@@ -82,7 +82,10 @@ vel=0
 - [ ] Both wheels agree within ~5%
 - [ ] Motor voltage stays within ±8 V (likely higher initial spike than v1 due to Kp jump)
 
-**Log file:** `logs/test0_wheel_speed_v3_onfloor_2026-04-22.txt`
+**Log file — full absolute path to paste into the GUI:**
+```
+C:\Users\Mads2\DTU\4. Semester\Linear Control Design\REGBOT-Balance-Assignment\logs\test0_wheel_speed_v3_onfloor_2026-04-22.txt
+```
 
 **Notes (post-test):**
 - Rise time:
@@ -113,7 +116,10 @@ vel=0, bal=1, log=15 : time=10
 - [ ] Calm-period pitch ≤ ±2° (previous v2: ~±1° during the calm middle interval)
 - [ ] Linear-model settling prediction: 1.34 s (was 1.55 s under v1)
 
-**Log file:** `logs/test3a_balance_rest_v3_onfloor_2026-04-22.txt`
+**Log file — full absolute path to paste into the GUI:**
+```
+C:\Users\Mads2\DTU\4. Semester\Linear Control Design\REGBOT-Balance-Assignment\logs\test3a_balance_rest_v3_onfloor_2026-04-22.txt
+```
 
 **Notes (post-test):**
 - Balance hold time:
@@ -148,7 +154,10 @@ vel=0
 - [ ] Motor voltage within ±8 V (v2 baseline peak: 4.67 V)
 - [ ] No visible limit-cycle growth
 
-**Log file:** `logs/test3b_square_0.8ms_v3_onfloor_2026-04-22.txt`
+**Log file — full absolute path to paste into the GUI:**
+```
+C:\Users\Mads2\DTU\4. Semester\Linear Control Design\REGBOT-Balance-Assignment\logs\test3b_square_0.8ms_v3_onfloor_2026-04-22.txt
+```
 
 **Notes (post-test):**
 - Speed used:
@@ -178,7 +187,10 @@ topos=2, vel=1.2 : time=10
 - [ ] Completes inside 10 s mission window
 - [ ] No motor saturation
 
-**Log file:** `logs/test4_position_2m_v3_onfloor_2026-04-22.txt`
+**Log file — full absolute path to paste into the GUI:**
+```
+C:\Users\Mads2\DTU\4. Semester\Linear Control Design\REGBOT-Balance-Assignment\logs\test4_position_2m_v3_onfloor_2026-04-22.txt
+```
 
 **Notes (post-test):**
 - Final / peak position:
