@@ -40,7 +40,8 @@ Detailed plan: see Claude's plan file (local to the working machine).
     - [x] `docs/Test Plan.md` prepared — pre-flight checklist, mission scripts, pass criteria, slots for post-test notes, v2-baseline comparisons baked in
     - [x] Load v3 ini into GUI → send → save to robot flash
     - [x] **Test 0 v3: PASS** — rise to 0.27 m/s in **0.012 s** (v1 was 0.329 s, 27× improvement), peak V = 2.60 V, L/R match 0.76%
-    - [ ] Test 3a v3
+    - [x] **Test 3a v3: PASS on drift spec** — drift 0.475 m (v2 was 0.343 m; the worsening is purely from tilt-offset calibration, mean tilt rose from +0.78° to +1.13°). Tilt std dropped from 4.76° to **2.04°** — 57% tighter balance thanks to the redesign. No late oscillation.
+    - [ ] (optional) Recalibrate tilt-offset + re-run Test 3a v3 for a cleaner comparison plot
     - [ ] Test 3b v3
     - [ ] Test 4 v3
 - [ ] **Phase 7** — Documentation sweep (`docs/*.md` + Report LaTeX)
@@ -59,3 +60,4 @@ Detailed plan: see Claude's plan file (local to the working machine).
 | 2026-04-22 | 4 | Task 4 re-linearised; free v→x integrator still there. New Kppos = 0.5411 (was 0.5335). Lead dropped again (improper TF). Sim peak v = 0.753 m/s (was 0.80), still above 0.7 spec. PM ≈ 57° after Lead drop, GM 25.2 dB. |
 | 2026-04-22 | 5 | regbot_group47.ini updated with all four v3 gains. Simulink sanity sims green: 10° recovery in <2 s (peak V = 2.8, no sat), 2 m step reaches 2.0 m with 7.5% overshoot and peak v ≈ 0.8 m/s. Ready for hardware. |
 | 2026-04-22 | 6 | **Test 0 v3 PASS.** Rise to 0.27 m/s in 0.012 s (vs 0.329 s in v1 — 27× faster). L/R 0.76% match. Voltage peak 2.60 V, ripple higher than v1 (noise/bandwidth tradeoff from Kp = 13.2). Design crossover of 30 rad/s finally materialises on hardware. |
+| 2026-04-22 | 6 | **Test 3a v3 PASS** on drift (0.475 m, spec 0.5). Tilt std **2.04° (−57% vs v2)** — balance is clearly tighter. No late oscillation. But drift increased from 0.343 to 0.475 m because tilt-offset bias grew from +0.78° to +1.13° (calibration drift between campaigns). Cleanest fix is a tilt-offset re-cal. |
