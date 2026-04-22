@@ -12,12 +12,12 @@ date: 2026-04-15
 
 > [!example] Related Materials
 > - [[Lesson 10 - Unstable Systems and REGBOT Balance]] — unstable-system theory and Nyquist primer (§2)
-> - [[Lecture_10_Unstable_systems.pdf|Lecture 10 Slides]]
-> - [[Fundamentals - Intuitive Control Theory|Fundamentals Guide]]
-> - [[Diagnostic Guide - What Went Wrong|Diagnostic Guide]]
-> - [[Worked Example - REGBOT Position Controller|Worked Example]]
-> - [[Day 5 - Black Box Modeling]] — voltage-to-velocity transfer function
-> - [[Day 8 & 9 - Position Controller Design]] — prior PILead design
+> - [Lecture 10 Slides](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FSlides%2FLecture_10_Unstable_systems.pdf) (opens in the DTU vault)
+> - [Fundamentals Guide](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FLecture%20Notes%2FFundamentals%20-%20Intuitive%20Control%20Theory) (opens in the DTU vault)
+> - [Diagnostic Guide](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FLecture%20Notes%2FDiagnostic%20Guide%20-%20What%20Went%20Wrong) (opens in the DTU vault)
+> - [Worked Example](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FLecture%20Notes%2FWorked%20Example%20-%20REGBOT%20Position%20Controller) (opens in the DTU vault)
+> - [Day 5 – Black Box Modeling](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FExercises%2FWork%2FDay%205%20-%20Black%20Box%20Modeling) — voltage-to-velocity transfer function (opens in the DTU vault)
+> - [Day 8 & 9 – Position Controller Design](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FExercises%2FWork%2FDay%208%20%26%209%20-%20Position%20Controller%20Design) — prior PILead design (opens in the DTU vault)
 
 ---
 
@@ -256,7 +256,7 @@ Test 3a was run twice on v3. First run: drift 0.475 m (inside spec), mean tilt o
 
 **Design a PI-controller** for the wheel velocity loop.
 
-- **Transfer function to control:** voltage-to-velocity $G_{vel}(s)$ identified on [[Day 5 - Black Box Modeling|Day 5]]
+- **Transfer function to control:** voltage-to-velocity $G_{vel}(s)$ identified on [Day 5](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FExercises%2FWork%2FDay%205%20-%20Black%20Box%20Modeling) (opens in the DTU vault)
 - **Controller type:** PI
 - **Source:** your own design from previous exercises
 
@@ -393,8 +393,8 @@ Follow this order to systematically work through the assignment:
 ## Key Design Principles (from Course)
 
 > [!tip] Reminders from Fundamentals
-> - The balance plant is **open-loop unstable** → Nyquist stability criterion requires **CCW encirclement** of $-1$ per RHP pole (see [[Fundamentals - Intuitive Control Theory#9. The Nyquist Plot Another Stability View|Fundamentals, Section 9]])
-> - For zero steady-state error to a **step** reference, you need **at least one integrator** in the loop (see [[Fundamentals - Intuitive Control Theory#11. Type-n Systems and Steady-State Error|Type-n systems]])
+> - The balance plant is **open-loop unstable** → Nyquist stability criterion requires **CCW encirclement** of $-1$ per RHP pole (see [Fundamentals, Section 9](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FLecture%20Notes%2FFundamentals%20-%20Intuitive%20Control%20Theory) in the DTU vault)
+> - For zero steady-state error to a **step** reference, you need **at least one integrator** in the loop (see [Type-n systems](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FLecture%20Notes%2FFundamentals%20-%20Intuitive%20Control%20Theory) in the DTU vault)
 > - The post-integrator makes the loop Type-2 → zero error for both step and ramp references
 > - Phase margin target: typically $\gamma_M = 50°$–$65°$ for balance between speed and overshoot
 
@@ -519,7 +519,7 @@ $$C_{wv}(s) = 13.2037 \cdot \frac{0.1s + 1}{0.1s}$$
 ### Task 2 — Balance Controller (Lecture 10, Method 2) ✅ (MATLAB)
 
 > [!info] Workflow followed
-> [[Lecture_10_Unstable_systems.pdf|Lecture 10 slides]] describe two methods for stabilising an open-loop unstable plant. We follow **Method 2** (slide 13) specialised to the tilt loop (slides 21–24).
+> [Lecture 10 slides (DTU vault)](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FSlides%2FLecture_10_Unstable_systems.pdf) describe two methods for stabilising an open-loop unstable plant. We follow **Method 2** (slide 13) specialised to the tilt loop (slides 21–24).
 
 ```mermaid
 flowchart TD

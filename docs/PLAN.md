@@ -31,7 +31,7 @@ Sequence: **Task 1 → Task 2 → Task 3 → Task 4 → Report**
 - [ ] **All:** Watch `REGBOT balance introduction.mp4`
 - [ ] **All:** Review Lecture 10 slides — unstable systems, Nyquist stabilisation, cascaded control
 - [ ] **All:** Install MATLAB packages: Simscape Multibody, Simulink Control Design
-- [ ] **All:** Read through [[REGBOT Balance Assignment]] notes and [[Fundamentals - Intuitive Control Theory]] sections 9 (Nyquist) and 11 (Type-n)
+- [ ] **All:** Read through [[REGBOT Balance Assignment]] notes and [Fundamentals - Intuitive Control Theory](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FLecture%20Notes%2FFundamentals%20-%20Intuitive%20Control%20Theory) sections 9 (Nyquist) and 11 (Type-n) *(opens in the DTU vault)*
 - [ ] **1 person:** Download starter files `regbot_1mg.slx` and `regbot_mg.m` from Learn → Resources/REGBOT balance resources
 - [ ] **1 person:** Calibrate gyro and tilt-offset on physical REGBOT
 - [ ] **Meeting:** Team discusses control architecture and divides roles
@@ -51,7 +51,7 @@ Sequence: **Task 1 → Task 2 → Task 3 → Task 4 → Report**
 
 **Goal:** Working PI velocity loop in Simulink.
 
-- [ ] Retrieve voltage-to-velocity TF from [[Day 5 - Black Box Modeling|Day 5]]: $G_{vel}(s) = \frac{13.34}{s + 35.71}$
+- [ ] Retrieve voltage-to-velocity TF from [Day 5](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FExercises%2FWork%2FDay%205%20-%20Black%20Box%20Modeling) *(opens in the DTU vault)*: $G_{vel}(s) = \frac{13.34}{s + 35.71}$
 - [ ] Design PI: choose $\omega_c$, $\gamma_M$, $N_i$ → compute $\tau_i$, $K_P$
 - [ ] MATLAB script: `src/task1_wheel_speed.m`
 - [ ] Bode plot → verify $\gamma_M$ and $\omega_c$ → save `figures/task1_bode.png`
@@ -161,10 +161,10 @@ This is the **hardest** task. Budget more time here.
 
 ## Quick Links
 
-- [[REGBOT Balance Assignment|Assignment Brief]]
-- [[Fundamentals - Intuitive Control Theory|Fundamentals Guide]]
-- [[Diagnostic Guide - What Went Wrong|Diagnostic Guide]]
-- [[Worked Example - REGBOT Position Controller|Day 8-9 Worked Example]]
+- [[REGBOT Balance Assignment|Assignment Brief]] *(local — in this vault)*
+- [Fundamentals Guide](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FLecture%20Notes%2FFundamentals%20-%20Intuitive%20Control%20Theory) *(opens in the DTU vault)*
+- [Diagnostic Guide](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FLecture%20Notes%2FDiagnostic%20Guide%20-%20What%20Went%20Wrong) *(opens in the DTU vault)*
+- [Day 8-9 Worked Example](obsidian://open?vault=Obsidian&file=Courses%2F34722%20Linear%20Control%20Design%201%2FLecture%20Notes%2FWorked%20Example%20-%20REGBOT%20Position%20Controller) *(opens in the DTU vault)*
 - MATLAB repo: `4. Semester/Linear Control Design/REGBOT-Balance-Assignment/`
 
 ---
