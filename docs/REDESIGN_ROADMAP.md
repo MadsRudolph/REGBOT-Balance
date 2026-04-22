@@ -30,7 +30,8 @@ Detailed plan: see Claude's plan file (local to the working machine).
     - [x] **Kppos = 0.5411** (was 0.5335); Lead dropped for same Simulink-improper-TF reason as before
     - [x] Sim peak velocity = 0.753 m/s (spec ≥ 0.7 ✓, tighter than the 0.80 of the old design but hardware should still clear with margin)
     - [x] PM 60.00° (with Lead) → ~57° (without, after drop); GM = 25.17 dB
-- [ ] **Phase 5** — Push gains into `config/regbot_group47.ini`, verify in Simulink (startAngle=10, topos=2)
+- [x] **Phase 5.A** — `config/regbot_group47.ini` updated with all four v3 gain blocks
+- [ ] **Phase 5.B** — Simulink sanity sims (user runs): `startAngle=10` recovery + `topos=2` step
 - [ ] **Phase 6** — Hardware validation (Tests 0, 3a, 3b, 4 with `v3_onfloor` suffix)
 - [ ] **Phase 7** — Documentation sweep (`docs/*.md` + Report LaTeX)
 - [ ] **Phase 8** — Merge `day5-redesign` → `main` on both submodules (`--no-ff`), then bump DTU main pointers
