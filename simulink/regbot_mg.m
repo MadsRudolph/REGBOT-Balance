@@ -68,7 +68,10 @@ twvlp      = 0.005;      % wheel-velocity filter tau    [s]
 % keep. Leave gains at 0 / sensible placeholders for loops not yet closed.
 
 % --- Task 1: Wheel-speed PI (source: design/design_task1_wheel.m) -----
-Kpwv   = 3.3100;
+% Day 5 v2 on-floor training-wheels plant Gvel = 2.198/(s+5.985).
+% wc = 30 rad/s, gamma_M spec >= 60 deg, Ni = 3 -> Kp = 13.20, tau_i = 0.10.
+% Achieved wc = 30.00 rad/s, PM = 82.85 deg, GM = Inf dB.
+Kpwv   = 13.2037;
 tiwv   = 0.1000;
 Kffwv  = 0;
 

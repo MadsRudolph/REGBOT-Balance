@@ -11,11 +11,11 @@ Detailed plan: see Claude's plan file (local to the working machine).
 ## Phases
 
 - [x] **Phase 0** — Branch `day5-redesign` on REGBOT-Balance and Report; this roadmap file in place.
-- [ ] **Phase 1** — Task 1 redesign
-    - [ ] 1.B  `design_task1_wheel.m` loads `G_1p_avg` from `data/Day5_results_v2.mat`
-    - [ ] 1.C  Run script → expect Kp ≈ 13.2, τ_i = 0.10, PM ≈ 83°
-    - [ ] 1.D  Paste new gains into `regbot_mg.m`
-    - [ ] 1.E  Commit
+- [x] **Phase 1** — Task 1 redesign
+    - [x] 1.B  `design_task1_wheel.m` loads `G_1p_avg` from `data/Day5_results_v2.mat`
+    - [x] 1.C  Ran script → **Kp = 13.2037**, τ_i = 0.1000, achieved wc = 30.00, PM = 82.85°, GM = Inf
+    - [x] 1.D  Paste new gains into `regbot_mg.m`
+    - [x] 1.E  Commit
 - [ ] **Phase 2** — Task 2 redesign (re-linearise, new Kptilt/titilt/tdtilt/tipost)
 - [ ] **Phase 3** — Task 3 redesign (re-linearise Gvel,outer)
 - [ ] **Phase 4** — Task 4 redesign (re-linearise Gpos,outer)
@@ -31,3 +31,4 @@ Detailed plan: see Claude's plan file (local to the working machine).
 | Date | Phase | Note |
 |---|---|---|
 | 2026-04-22 | 0 | Branch created on both submodules; roadmap in place. |
+| 2026-04-22 | 1 | Task 1 PI redesigned against Gvel = 2.198/(s+5.985). New Kp = 13.2037, tau_i = 0.1000. Achieved wc = 30.00 rad/s, PM = 82.85°, GM = ∞. |
