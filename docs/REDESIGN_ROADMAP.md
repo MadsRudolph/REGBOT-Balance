@@ -35,6 +35,14 @@ Detailed plan: see Claude's plan file (local to the working machine).
     - [x] `startAngle=10` balance recovery: voltage peak 2.8 V (no saturation), pitch 10° → 0° within ~0.3 s, fully settled by t ≈ 2 s. Faster than old design.
     - [x] 2 m position step: x reaches 2.15 m peak (7.5% overshoot), settles at 2.00 m; **peak velocity ≈ 0.80 m/s** (above 0.7 spec ✓); voltage peak ~3 V; pitch +17° during accel, returns to 0.
 - [ ] **Phase 6** — Hardware validation (Tests 0, 3a, 3b, 4 with `v3_onfloor` suffix)
+    - [x] Simulink sanity-sim screenshots moved into `figures/` and `docs/images/`:
+          `regbot_task2_sim_recovery_10deg_v3.png`, `regbot_task4_sim_step_v3.png`
+    - [x] `docs/Test Plan.md` prepared — pre-flight checklist, mission scripts, pass criteria, slots for post-test notes, v2-baseline comparisons baked in
+    - [ ] Load v3 ini into GUI → send → save to robot flash
+    - [ ] Test 0 v3
+    - [ ] Test 3a v3
+    - [ ] Test 3b v3
+    - [ ] Test 4 v3
 - [ ] **Phase 7** — Documentation sweep (`docs/*.md` + Report LaTeX)
 - [ ] **Phase 8** — Merge `day5-redesign` → `main` on both submodules (`--no-ff`), then bump DTU main pointers
 
