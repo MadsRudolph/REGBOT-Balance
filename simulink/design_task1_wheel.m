@@ -47,14 +47,10 @@ K_DC    = dcgain(Gvel_day5);
 omega_b = -p_plant(1);          % break frequency = -pole (rad/s)
 tau_p   = 1/omega_b;            % time constant   = 1/break
 
-fprintf('==============================================================\n');
-fprintf('  STEP 1 — INSPECT THE PLANT  (Day 5 v2 on-floor)\n');
-fprintf('==============================================================\n');
 print_tf('Gvel_day5', Gvel_day5);
-fprintf('  DC gain         = %.4f (m/s)/V    (finite -> pure P leaves e_ss != 0 -> need PI)\n', K_DC);
-fprintf('  Break frequency = %.3f rad/s     (Bode mag breaks downward here)\n', omega_b);
-fprintf('  Time constant   = %.3f s         (63%% of final value in this time)\n', tau_p);
-fprintf('  Max phase lag   = -90 deg        (1-pole plant, phase-friendly)\n\n');
+fprintf('DC gain = %.4f (m/s)/V\n', K_DC);
+fprintf('break   = %.3f rad/s\n', omega_b);
+fprintf('tau     = %.3f s\n\n', tau_p);
 
 % Plot 1: bare plant.
 save_plot(figure(190), @() bode(Gvel_day5, {0.1, 1000}), ...
@@ -75,13 +71,9 @@ wc_wv        = 30;       % target crossover [rad/s]
 gamma_M_spec = 60;       % phase margin spec [deg]
 Ni_wv        = 3;        % PI zero at wc/Ni
 
-fprintf('==============================================================\n');
-fprintf('  STEP 2 — PICK SPECS\n');
-fprintf('==============================================================\n');
-fprintf('  wc      = %2d rad/s    (>= 2x Task 2''s 15 rad/s; >= 5x plant break %.2f)\n', ...
-        wc_wv, omega_b);
-fprintf('  gamma_M >= %2d deg     (course default; ~10%% step overshoot, robust)\n', gamma_M_spec);
-fprintf('  Ni      = %2d           (PI zero at wc/Ni; balances integral action vs phase cost)\n\n', Ni_wv);
+fprintf('wc      = %d rad/s\n', wc_wv);
+fprintf('gamma_M = %d deg\n',   gamma_M_spec);
+fprintf('Ni      = %d\n\n',     Ni_wv);
 
 
 %% ====================== STEP 3 — PLACE THE PI ZERO ======================
@@ -93,13 +85,7 @@ fprintf('  Ni      = %2d           (PI zero at wc/Ni; balances integral action v
 tau_i_wv   = Ni_wv / wc_wv;
 C_PI_shape = (tau_i_wv*s + 1) / (tau_i_wv*s);   % PI with Kp = 1
 
-fprintf('==============================================================\n');
-fprintf('  STEP 3 — PLACE THE PI ZERO\n');
-fprintf('==============================================================\n');
-fprintf('  tau_i = Ni/wc          = %.4f s\n', tau_i_wv);
-fprintf('  PI zero                = %.2f rad/s   (= 1/tau_i; one-third of wc)\n', 1/tau_i_wv);
-fprintf('  C_PI_shape(s)          = (%.4f s + 1) / (%.4f s)   [Kp=1; gain set in Step 5]\n\n', ...
-        tau_i_wv, tau_i_wv);
+fprintf('tau_i = Ni/wc = %.4f s   (PI zero at %.2f rad/s)\n\n', tau_i_wv, 1/tau_i_wv);
 
 % Plot 2: plant alone, PI alone, and the combined (still no Kp).
 figure(191); clf
@@ -124,18 +110,12 @@ magL_unscaled   = squeeze(magL_unscaled);
 phi_L_wc        = squeeze(phi_L_wc);
 gamma_M_natural = 180 + phi_L_wc;
 
-fprintf('==============================================================\n');
-fprintf('  STEP 4 — PHASE BALANCE: DO WE NEED A LEAD?\n');
-fprintf('==============================================================\n');
-fprintf('  Phase of C_PI*G at wc  = %+7.2f deg\n', phi_L_wc);
-fprintf('  Natural gamma_M        = %+7.2f deg     (= 180 + phase)\n', gamma_M_natural);
-fprintf('  Spec                   = %+7.2f deg\n', gamma_M_spec);
+fprintf('phase at wc = %+.2f deg\n', phi_L_wc);
+fprintf('natural PM  = %+.2f deg  (spec %d)\n', gamma_M_natural, gamma_M_spec);
 if gamma_M_natural >= gamma_M_spec
-    fprintf('  -> Natural gamma_M exceeds spec by %.2f deg. NO LEAD NEEDED.\n\n', ...
-            gamma_M_natural - gamma_M_spec);
+    fprintf('-> no Lead needed\n\n');
 else
-    fprintf('  -> Natural gamma_M is below spec by %.2f deg. LEAD REQUIRED.\n\n', ...
-            gamma_M_spec - gamma_M_natural);
+    fprintf('-> Lead required\n\n');
 end
 
 % Plot 3: combined Bode with wc marker and the "PM line" (-180+gamma_M).
@@ -161,15 +141,12 @@ saveas(gcf, fullfile(IMG_DIR, 'regbot_task1_step4_phase_balance.png'));
 % magnitude crosses 1 (= 0 dB) at exactly wc.
 Kp_wv = 1 / magL_unscaled;
 
-fprintf('==============================================================\n');
-fprintf('  STEP 5 — SOLVE K_p so |L(j wc)| = 1\n');
-fprintf('==============================================================\n');
-fprintf('  |C_PI_shape * G_vel|_{wc} = %.4f       (need to lift to 1.000)\n', magL_unscaled);
-fprintf('  Kp = 1/|.|                = %.4f\n\n', Kp_wv);
+fprintf('|L|_unscaled = %.4f at wc\n', magL_unscaled);
+fprintf('Kp = 1/|L|   = %.4f\n\n',     Kp_wv);
 
 C_wv = Kp_wv * C_PI_shape;
 L_wv = C_wv * Gvel_day5;
-print_tf('C_wv = Kp * (tau_i s + 1)/(tau_i s)', C_wv);
+print_tf('C_wv', C_wv);
 
 
 %% ====================== STEP 6 — VERIFY =================================
@@ -178,12 +155,9 @@ print_tf('C_wv = Kp * (tau_i s + 1)/(tau_i s)', C_wv);
 % the Step 4 prediction.
 [GM, PM, ~, wc_ach] = margin(L_wv);
 
-fprintf('==============================================================\n');
-fprintf('  STEP 6 — VERIFY\n');
-fprintf('==============================================================\n');
-fprintf('  Achieved wc            = %.2f rad/s   (target %.0f)\n', wc_ach, wc_wv);
-fprintf('  Phase margin           = %.2f deg     (target >= %.0f)\n', PM, gamma_M_spec);
-fprintf('  Gain margin            = %.2f dB\n\n', 20*log10(GM));
+fprintf('wc = %.2f rad/s\n', wc_ach);
+fprintf('PM = %.2f deg\n',   PM);
+fprintf('GM = %.2f dB\n\n',  20*log10(GM));
 
 save_plot(figure(200), @() margin(L_wv), ...
     'Step 6: Open-loop Bode  L = C_{wv} G_{vel}', ...
@@ -200,9 +174,6 @@ Kpwv  = Kp_wv;
 tiwv  = tau_i_wv;
 Kffwv = 0;
 
-fprintf('==============================================================\n');
-fprintf('  Copy-paste this block into regbot_mg.m (Task 1 gains)\n');
-fprintf('==============================================================\n');
-fprintf('    Kpwv  = %.4f;\n',  Kpwv);
-fprintf('    tiwv  = %.4f;\n',  tiwv);
-fprintf('    Kffwv = %d;\n\n',  Kffwv);
+fprintf('Kpwv  = %.4f;\n',  Kpwv);
+fprintf('tiwv  = %.4f;\n',  tiwv);
+fprintf('Kffwv = %d;\n\n',  Kffwv);

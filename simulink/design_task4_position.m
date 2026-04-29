@@ -66,23 +66,15 @@ Gpos_outer = minreal(tf(num, den));
 P_count   = sum(real(pole(Gpos_outer)) > 0);
 n_int     = sum(abs(pole(Gpos_outer)) < 1e-6);   % poles ~ 0
 
-fprintf('==============================================================\n');
-fprintf('  STEP 0 — IDENTIFY THE PLANT  (Tasks 1+2+3 closed, Task 4 open)\n');
-fprintf('==============================================================\n');
-fprintf('  Gpos,outer(s) = pos_ref -> x_position\n');
 print_tf('Gpos_outer', Gpos_outer);
 
-% --- Describe Gpos,outer: poles, zeros, DC gain, RHP-pole count ---------
-fprintf('  Poles:  '); fprintf('%7.2f  ', sort(real(pole(Gpos_outer)))); fprintf('\n');
-fprintf('  Zeros:  '); fprintf('%7.2f  ', sort(real(zero(Gpos_outer)))); fprintf('\n');
-fprintf('  DC gain   = %.4e\n', dcgain(Gpos_outer));
-fprintf('  RHP poles = %d  (anything > 0 means the plant is unstable)\n\n', ...
-        sum(real(pole(Gpos_outer))>0));
-
-fprintf('  RHP poles                  = %d\n', P_count);
-fprintf('  Integrators (poles ~ 0)    = %d   (>= 1 expected, from v -> x)\n', n_int);
+fprintf('Poles:  '); fprintf('%7.2f  ', sort(real(pole(Gpos_outer)))); fprintf('\n');
+fprintf('Zeros:  '); fprintf('%7.2f  ', sort(real(zero(Gpos_outer)))); fprintf('\n');
+fprintf('DC gain     = %.4e\n', dcgain(Gpos_outer));
+fprintf('RHP poles   = %d\n', P_count);
+fprintf('integrators = %d\n', n_int);
 if n_int >= 1
-    fprintf('  -> Plant is Type-%d. Pure P alone gives e_ss = 0 on a step.\n\n', n_int);
+    fprintf('-> Type-%d (pure P gives e_ss = 0 on step)\n\n', n_int);
 end
 
 figure(502); clf; zplane(zero(Gpos_outer), pole(Gpos_outer)); grid on
@@ -102,11 +94,8 @@ saveas(gcf, fullfile(IMG_DIR, 'regbot_task4_plant_pz.png'));
 wc_pos       = 0.6;       % chosen against mission specs
 gamma_M_spec = 60;        % course default
 
-fprintf('==============================================================\n');
-fprintf('  STEP 1 — PICK wc  (mission-driven, not cascade-driven)\n');
-fprintf('==============================================================\n');
-fprintf('  wc = %.2f rad/s   (iterated to clear peak v >= 0.7 m/s in <= 10 s)\n', wc_pos);
-fprintf('  gamma_M >= %.0f deg\n\n', gamma_M_spec);
+fprintf('wc      = %.2f rad/s\n', wc_pos);
+fprintf('gamma_M = %d deg\n\n',    gamma_M_spec);
 
 
 %% ====================== STEP 2 — PHASE BALANCE =========================
@@ -132,14 +121,10 @@ else
     lead_note   = 'standard ideal Lead (tau_d s + 1)';
 end
 
-fprintf('==============================================================\n');
-fprintf('  STEP 2 — PHASE BALANCE: HOW MUCH LEAD?\n');
-fprintf('==============================================================\n');
-fprintf('  MATLAB phase (unwrapped) = %+7.2f deg\n', phi_G_unwrapped);
-fprintf('  Phase wrapped to [-180,180] = %+7.2f deg   <-- physical reading\n', phi_G);
-fprintf('  Required phi_Lead          = %+7.2f deg     (= -180 + gamma_M - phi_G)\n', phi_Lead);
-fprintf('  tau_d = tan(phi_Lead)/wc   = %.4f s\n', tau_d_pos);
-fprintf('  C_Lead(s)                 = %.4f s + 1     (%s)\n\n', tau_d_pos, lead_note);
+fprintf('phase (raw)   = %+.2f deg\n', phi_G_unwrapped);
+fprintf('phase wrapped = %+.2f deg\n', phi_G);
+fprintf('phi_Lead      = %+.2f deg\n', phi_Lead);
+fprintf('tau_d         = %.4f s   (%s)\n\n', tau_d_pos, lead_note);
 
 % Visual
 figure(503); clf
@@ -159,11 +144,8 @@ saveas(gcf, fullfile(IMG_DIR, 'regbot_task4_phase_balance.png'));
 magL    = squeeze(bode(C_Lead_pos * Gpos_outer, wc_pos));
 Kp_pos  = 1 / magL;
 
-fprintf('==============================================================\n');
-fprintf('  STEP 3 — SOLVE K_p so |L(j wc)| = 1\n');
-fprintf('==============================================================\n');
-fprintf('  |C_Lead * Gpos,outer|_{wc} = %.4f\n', magL);
-fprintf('  Kp = 1 / |.|               = %.4f\n\n', Kp_pos);
+fprintf('|L|        = %.4f at wc\n', magL);
+fprintf('Kp = 1/|L| = %.4f\n\n',     Kp_pos);
 
 
 %% ====================== STEP 4 — LEAD DECISION =========================
@@ -195,13 +177,9 @@ else
         ALPHA, phi_Lead, LEAD_DROP_THRESHOLD_DEG);
 end
 
-fprintf('==============================================================\n');
-fprintf('  STEP 4 — LEAD DECISION\n');
-fprintf('==============================================================\n');
-fprintf('  Ideal Lead (%.4f s + 1) is improper -- Simulink rejects it.\n', tau_d_pos);
-fprintf('  Required phi_Lead       = %.2f deg\n', phi_Lead);
-fprintf('  Drop threshold          = %.1f deg\n', LEAD_DROP_THRESHOLD_DEG);
-fprintf('  Decision                : %s\n\n', decision);
+fprintf('phi_Lead       = %.2f deg\n', phi_Lead);
+fprintf('drop threshold = %.1f deg\n', LEAD_DROP_THRESHOLD_DEG);
+fprintf('decision       : %s\n\n',     decision);
 
 
 %% ====================== STEP 5 — VERIFY ================================
@@ -218,17 +196,9 @@ L_pos_firmware = Kp_pos * C_Lead_firmware * Gpos_outer;
 T_pos_firmware = feedback(L_pos_firmware, 1);
 [GM_f, PM_f, ~, wc_f] = margin(L_pos_firmware);
 
-fprintf('==============================================================\n');
-fprintf('  STEP 5 — VERIFY\n');
-fprintf('==============================================================\n');
-fprintf('  Design-time (with ideal Lead):\n');
-fprintf('    wc = %.3f rad/s    PM = %.2f deg    GM = %.2f dB\n', ...
-        wc_d, PM_d, 20*log10(GM_d));
-fprintf('  Firmware (%s):\n', decision);
-fprintf('    wc = %.3f rad/s    PM = %.2f deg    GM = %.2f dB\n', ...
-        wc_f, PM_f, 20*log10(GM_f));
-fprintf('  Closed-loop RHP poles   = %d\n\n', ...
-        sum(real(pole(T_pos_firmware)) > 0));
+fprintf('design:   wc = %.3f rad/s, PM = %.2f deg, GM = %.2f dB\n', wc_d, PM_d, 20*log10(GM_d));
+fprintf('firmware: wc = %.3f rad/s, PM = %.2f deg, GM = %.2f dB\n', wc_f, PM_f, 20*log10(GM_f));
+fprintf('RHP CL poles = %d\n\n', sum(real(pole(T_pos_firmware)) > 0));
 
 % 2 m mission step using the firmware controller (the actual deployed one)
 [y_step, t_step] = step(2 * T_pos_firmware, 20);
@@ -236,9 +206,8 @@ peak_v   = max(gradient(y_step, t_step));
 settle_i = find(abs(y_step - 2) > 0.02*2, 1, 'last');
 settle_t = t_step(settle_i);
 
-fprintf('  2 m step response (firmware controller):\n');
-fprintf('    Peak velocity (d/dt)  = %.3f m/s    (spec: must exceed 0.7 m/s)\n', peak_v);
-fprintf('    Settling time (2%%)    = %.2f s     (mission window: 10 s)\n\n', settle_t);
+fprintf('peak v       = %.3f m/s\n', peak_v);
+fprintf('settle (2%%)  = %.2f s\n\n', settle_t);
 
 save_plot(figure(500), @() margin(L_pos_firmware), ...
     'Step 5: Open-loop  L = C_{pos} G_{pos,outer}  (firmware)', ...
@@ -253,8 +222,5 @@ save_plot(figure(501), @() step(2 * T_pos_firmware, 20), ...
 Kppos = Kp_pos;
 tdpos = tdpos_firmware;       % whatever Step 4 selected
 
-fprintf('==============================================================\n');
-fprintf('  Copy-paste this block into regbot_mg.m (Task 4 gains)\n');
-fprintf('==============================================================\n');
-fprintf('    Kppos  = %.4f;\n', Kppos);
-fprintf('    tdpos  = %.4f;       %% Lead per Step 4 decision\n\n', tdpos);
+fprintf('Kppos  = %.4f;\n',   Kppos);
+fprintf('tdpos  = %.4f;\n\n', tdpos);

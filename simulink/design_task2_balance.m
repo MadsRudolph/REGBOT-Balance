@@ -70,28 +70,17 @@ P_count    = sum(real(pole(Gtilt))>0);
 dc         = dcgain(Gtilt);
 p_unstable = max(real(pole(Gtilt)));   % rate of the falling mode (rad/s)
 
-fprintf('==============================================================\n');
-fprintf('  STEP 0 — IDENTIFY THE PLANT\n');
-fprintf('==============================================================\n');
-fprintf('  Gwv(s)  = voltage -> wheel velocity   (Task 1 inner loop)\n');
-print_tf('Gwv', Gwv);
-fprintf('  Gtilt(s) = vel_ref -> tilt angle      (Task 2 outer plant)\n');
+print_tf('Gwv',   Gwv);
 print_tf('Gtilt', Gtilt);
 
-% --- Describe Gtilt: poles, zeros, DC gain, RHP-pole count ---------------
-fprintf('  Poles:  '); fprintf('%7.2f  ', sort(real(pole(Gtilt)))); fprintf('\n');
-fprintf('  Zeros:  '); fprintf('%7.2f  ', sort(real(zero(Gtilt)))); fprintf('\n');
-fprintf('  DC gain   = %.4e\n', dcgain(Gtilt));
-fprintf('  RHP poles = %d  (anything > 0 means the plant is unstable)\n\n', ...
-        sum(real(pole(Gtilt))>0));
-
-fprintf('  RHP poles of Gtilt   = %d   (P = %d for Nyquist bookkeeping)\n', P_count, P_count);
-fprintf('  DC gain of Gtilt     = %+.3e\n', dc);
+fprintf('Poles:  '); fprintf('%7.2f  ', sort(real(pole(Gtilt)))); fprintf('\n');
+fprintf('Zeros:  '); fprintf('%7.2f  ', sort(real(zero(Gtilt)))); fprintf('\n');
+fprintf('DC gain   = %+.3e\n', dc);
+fprintf('RHP poles = %d\n', P_count);
 if P_count > 0
-    fprintf('  -> Plant is UNSTABLE: tilt grows like e^(%.2f t) without feedback.\n\n', ...
-            p_unstable);
+    fprintf('-> unstable, falling mode e^(%.2f t)\n\n', p_unstable);
 else
-    fprintf('  -> Plant is stable.\n\n');
+    fprintf('-> stable\n\n');
 end
 
 % Plant-ID plots (used in the report + Obsidian doc)
@@ -122,9 +111,22 @@ xlim([-50 50]); ylim([-50 50]);
 title('Pole-zero map: G_{tilt} (zoomed)');
 saveas(gcf, fullfile(IMG_DIR, 'regbot_Gtilt_pzmap_zoom.png'));
 
-% Nyquist of Gtilt with the critical point (-1, 0) marked.
-figure(106); clf; nyquist(Gtilt); grid on; hold on
+% Nyquist of Gtilt — extract data and plot manually so we can drop
+% the default M-circle overlay and force a sensible axis range.
+[re, im] = nyquist(Gtilt);
+re = squeeze(re); im = squeeze(im);
+figure(106); clf
+plot(re,  im, 'b-',  'LineWidth', 1.5); hold on
+plot(re, -im, 'b--', 'LineWidth', 1.0);   % mirror image (omega < 0)
 plot(-1, 0, 'r+', 'MarkerSize', 14, 'LineWidth', 2);
+% Direction arrows along the omega > 0 branch (omega increasing).
+ks = round([0.2 0.5 0.8] * length(re));
+for k = ks
+    quiver(re(k), im(k), re(k+1)-re(k), im(k+1)-im(k), 0, ...
+           'Color', 'b', 'MaxHeadSize', 5, 'LineWidth', 1.5, 'AutoScale', 'off');
+end
+axis equal; grid on
+xlabel('Re'); ylabel('Im');
 title(sprintf('Nyquist: G_{tilt}  (RHP poles P = %d)', P_count));
 saveas(gcf, fullfile(IMG_DIR, 'regbot_Gtilt_nyquist.png'));
 
@@ -146,13 +148,8 @@ else
     sign_reason = 'DC gain < 0  =>  sign(K_PS) = +1 may suffice';
 end
 
-fprintf('==============================================================\n');
-fprintf('  STEP 1 — SIGN OF K_PS  (Nyquist bookkeeping)\n');
-fprintf('==============================================================\n');
-fprintf('  Z = N + P   want Z = 0   P = %d   ->  need N = -%d  (CCW encirclements)\n', ...
-        P_count, P_count);
-fprintf('  %s\n', sign_reason);
-fprintf('  -> The -1 will be bundled into the post-integrator in Step 2.\n\n');
+fprintf('Z = N + P, want Z = 0, P = %d -> N = -%d\n', P_count, P_count);
+fprintf('%s\n\n', sign_reason);
 
 
 %% ====================== STEP 2 — POST-INTEGRATOR =======================
@@ -167,16 +164,11 @@ tau_ip     = 1 / w_ip;
 C_PI_post  = (tau_ip*s + 1) / (tau_ip*s);
 Gtilt_post = sign_K * C_PI_post * Gtilt;
 
-fprintf('==============================================================\n');
-fprintf('  STEP 2 — POST-INTEGRATOR AT THE MAGNITUDE PEAK\n');
-fprintf('==============================================================\n');
-fprintf('  |Gtilt|_max          = %.4f   at  w_peak = %.3f rad/s\n', mag_peak, w_ip);
-fprintf('  tau_i,post = 1/w_peak = %.4f s\n', tau_ip);
-print_tf('C_PI_post', C_PI_post);
-fprintf('  Stabilised plant     : Gtilt,post = (%+d) * C_PI,post * Gtilt\n', sign_K);
+fprintf('|Gtilt|_max = %.4f at w_peak = %.3f rad/s\n', mag_peak, w_ip);
+fprintf('tau_i,post  = %.4f s\n', tau_ip);
+print_tf('C_PI_post',  C_PI_post);
 print_tf('Gtilt_post', minreal(Gtilt_post));
-fprintf('  RHP poles of Gtilt,post = %d  (outer loop will close this stably)\n\n', ...
-        sum(real(pole(minreal(Gtilt_post)))>0));
+fprintf('RHP poles of Gtilt_post = %d\n\n', sum(real(pole(minreal(Gtilt_post)))>0));
 
 save_plot(figure(300), @() bode(Gtilt, Gtilt_post, w_grid), ...
     'Step 2: G_{tilt} (blue) vs. G_{tilt,post} (orange) -- post-integrator flattens the peak', ...
@@ -184,9 +176,26 @@ save_plot(figure(300), @() bode(Gtilt, Gtilt_post, w_grid), ...
 legend('G_{tilt}(s)', '-C_{PI,post}(s) G_{tilt}(s)', 'Location', 'best');
 saveas(gcf, fullfile(IMG_DIR, 'regbot_task2_bode_post.png'));
 
-% Nyquist of the stabilised plant: should make one CCW encirclement of (-1,0).
-figure(301); clf; nyquist(Gtilt_post); grid on; hold on
+% Nyquist of Gtilt_post — should make one CCW encirclement of (-1, 0).
+% Gtilt_post has a free integrator (from C_PI_post's 1/s factor), so
+% the curve heads to infinity at low frequencies. Sample only above
+% w = 0.1 rad/s so the auto-axis isn't blown out; xlim/ylim then focus
+% on the critical-point neighbourhood.
+w_ny     = logspace(-1, 4, 2000);
+[re, im] = nyquist(Gtilt_post, w_ny);
+re = squeeze(re); im = squeeze(im);
+figure(301); clf
+plot(re,  im, 'b-',  'LineWidth', 1.5); hold on
+plot(re, -im, 'b--', 'LineWidth', 1.0);
 plot(-1, 0, 'r+', 'MarkerSize', 14, 'LineWidth', 2);
+% Direction arrows along the omega > 0 branch (omega increasing).
+ks = round([0.2 0.5 0.8] * length(re));
+for k = ks
+    quiver(re(k), im(k), re(k+1)-re(k), im(k+1)-im(k), 0, ...
+           'Color', 'b', 'MaxHeadSize', 5, 'LineWidth', 1.5, 'AutoScale', 'off');
+end
+xlim([-3 1]); ylim([-3 3]); axis equal; grid on
+xlabel('Re'); ylabel('Im');
 title('Nyquist: G_{tilt,post}  (one CCW encirclement of -1)');
 saveas(gcf, fullfile(IMG_DIR, 'regbot_task2_nyquist_post.png'));
 
@@ -233,21 +242,16 @@ C_outer_tilt = Kp_tilt * C_PI_tilt * C_Lead;
 L_tilt       = C_outer_tilt * Gtilt_post;
 C_total_tilt = Kp_tilt * sign_K * C_PI_post * C_PI_tilt * C_Lead;
 
-fprintf('==============================================================\n');
-fprintf('  STEP 3 — OUTER PI-LEAD ON G_{tilt,post}\n');
-fprintf('==============================================================\n');
-fprintf('  3a. Specs:           wc = %.1f rad/s   gamma_M = %.0f deg   Ni = %d\n', ...
-        wc_tilt, gamma_M, Ni_tilt);
-fprintf('  3b. Outer PI zero:   tau_i = Ni/wc       = %.4f s\n', tau_i_tilt);
-fprintf('  3c. Phase balance at wc:\n');
-fprintf('      phi_Gtilt,post(j wc) = %+7.2f deg\n', phi_G);
-fprintf('      phi_PI(j wc)         = %+7.2f deg     (= -atan(1/Ni))\n', phi_PI);
-fprintf('      phi_Lead required    = %+7.2f deg     (= -180 + gamma_M - phi_G - phi_PI)\n', phi_Lead);
-fprintf('  3d. Lead:            tau_d = tan(phi_Lead)/wc = %.4f s   (%s)\n', tau_d, lead_note);
-fprintf('  3e. Loop gain:       |C_PI * C_Lead * Gtilt,post|_{wc} = %.4f\n', magL);
-fprintf('                       Kp = 1/|.|             = %.4f\n\n', Kp_tilt);
-print_tf('C_outer = Kp * C_PI * C_Lead', C_outer_tilt);
-print_tf('C_total (full cascade with sign flip + post-integrator)', minreal(C_total_tilt));
+fprintf('wc = %.1f rad/s, gamma_M = %.0f deg, Ni = %d\n', wc_tilt, gamma_M, Ni_tilt);
+fprintf('tau_i    = %.4f s\n',   tau_i_tilt);
+fprintf('phi_G    = %+.2f deg\n', phi_G);
+fprintf('phi_PI   = %+.2f deg\n', phi_PI);
+fprintf('phi_Lead = %+.2f deg  (%s)\n', phi_Lead, lead_note);
+fprintf('tau_d    = %.4f s\n',  tau_d);
+fprintf('|L|      = %.4f\n',     magL);
+fprintf('Kp       = %.4f\n\n',   Kp_tilt);
+print_tf('C_outer', C_outer_tilt);
+print_tf('C_total', minreal(C_total_tilt));
 
 % Phase-balance visual: combined loop Bode with wc + PM-line markers
 figure(305); clf
@@ -269,22 +273,11 @@ cl_poles = pole(minreal(T_tilt));
 rhp_cl   = sum(real(cl_poles) > 0);
 [GMt, PMt, ~, wct_ach] = margin(L_tilt);
 
-fprintf('==============================================================\n');
-fprintf('  STEP 4 — VERIFY\n');
-fprintf('==============================================================\n');
-fprintf('  margin(L_tilt):\n');
-fprintf('    Achieved wc            = %.2f rad/s   (target %.1f)\n', wct_ach, wc_tilt);
-fprintf('    Phase margin           = %.2f deg     (target %.0f)\n', PMt, gamma_M);
-fprintf('    Gain margin            = %.2f dB      (negative is OK on P=1 plants:\n', 20*log10(GMt));
-fprintf('                                          lower bound on |K| for stability)\n');
-fprintf('  Closed-loop poles (real parts, sorted):\n');
-fprintf('    '); fprintf('%+7.2f  ', sort(real(cl_poles))); fprintf('\n');
-if rhp_cl == 0
-    stab_msg = '(stable ✓)';
-else
-    stab_msg = '(UNSTABLE — redesign)';
-end
-fprintf('  RHP closed-loop poles    = %d   %s\n\n', rhp_cl, stab_msg);
+fprintf('wc = %.2f rad/s\n', wct_ach);
+fprintf('PM = %.2f deg\n',   PMt);
+fprintf('GM = %.2f dB\n',    20*log10(GMt));
+fprintf('CL poles: '); fprintf('%+7.2f  ', sort(real(cl_poles))); fprintf('\n');
+fprintf('RHP CL poles = %d\n\n', rhp_cl);
 
 save_plot(figure(302), @() margin(L_tilt), ...
     'Step 4: Open-loop  L = K_P C_{PI} C_{Lead} G_{tilt,post}', ...
@@ -311,10 +304,8 @@ abs_env  = abs(y_dist);
 settle_i = find(abs_env > 0.02*theta0, 1, 'last');
 settle_t = t_out(settle_i);
 peak_us  = max(-y_dist);
-fprintf('  Linear-model recovery from theta_0 = 10 deg:\n');
-fprintf('    Settling time (2%% env.) = %.2f s\n', settle_t);
-fprintf('    Peak undershoot         = %.2f deg   (RHP-zero signature)\n', rad2deg(peak_us));
-fprintf('    Authoritative IC test   : Simulink with startAngle = 10\n\n');
+fprintf('settle (2%%)     = %.2f s\n', settle_t);
+fprintf('peak undershoot = %.2f deg\n\n', rad2deg(peak_us));
 
 
 %% ------------------- Write to workspace + gains block ------------------
@@ -323,12 +314,8 @@ titilt = tau_i_tilt;
 tdtilt = tau_d;
 tipost = tau_ip;
 
-fprintf('==============================================================\n');
-fprintf('  Copy-paste this block into regbot_mg.m (Task 2 gains)\n');
-fprintf('==============================================================\n');
-fprintf('    Kptilt = %.4f;\n', Kptilt);
-fprintf('    titilt = %.4f;\n', titilt);
-fprintf('    tdtilt = %.4f;\n', tdtilt);
-fprintf('    tipost = %.4f;\n\n', tipost);
-fprintf('  Firmware [cbal] kp must be entered as NEGATIVE (-%.4f) --\n', Kptilt);
-fprintf('  the firmware does NOT absorb the Method 2 sign flip.\n\n');
+fprintf('Kptilt = %.4f;\n', Kptilt);
+fprintf('titilt = %.4f;\n', titilt);
+fprintf('tdtilt = %.4f;\n', tdtilt);
+fprintf('tipost = %.4f;\n', tipost);
+fprintf('(firmware [cbal] kp must be entered as -%.4f)\n\n', Kptilt);

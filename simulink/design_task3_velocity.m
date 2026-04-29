@@ -69,26 +69,16 @@ P_count = sum(real(pole(Gvel_outer)) > 0);
 z_all   = zero(Gvel_outer);
 rhp_z   = z_all(real(z_all) > 0);
 
-fprintf('==============================================================\n');
-fprintf('  STEP 0 — IDENTIFY THE PLANT  (Tasks 1+2 closed, Task 3 open)\n');
-fprintf('==============================================================\n');
-fprintf('  Gvel,outer(s) = theta_ref -> wheel_vel_filter\n');
 print_tf('Gvel_outer', Gvel_outer);
 
-% --- Describe Gvel,outer: poles, zeros, DC gain, RHP-pole count ---------
-fprintf('  Poles:  '); fprintf('%7.2f  ', sort(real(pole(Gvel_outer)))); fprintf('\n');
-fprintf('  Zeros:  '); fprintf('%7.2f  ', sort(real(zero(Gvel_outer)))); fprintf('\n');
-fprintf('  DC gain   = %.4e\n', dcgain(Gvel_outer));
-fprintf('  RHP poles = %d  (anything > 0 means the plant is unstable)\n\n', ...
-        sum(real(pole(Gvel_outer))>0));
-
-fprintf('  RHP poles    = %d   (Task 2 stabilisation worked if 0)\n', P_count);
+fprintf('Poles:  '); fprintf('%7.2f  ', sort(real(pole(Gvel_outer)))); fprintf('\n');
+fprintf('Zeros:  '); fprintf('%7.2f  ', sort(real(zero(Gvel_outer)))); fprintf('\n');
+fprintf('DC gain   = %.4e\n', dcgain(Gvel_outer));
+fprintf('RHP poles = %d\n', P_count);
 if ~isempty(rhp_z)
-    fprintf('  RHP zeros    = %d   at  ', numel(rhp_z));
-    fprintf('%+7.3f  ', real(rhp_z));
-    fprintf('rad/s   <-- physics: caps achievable wc\n\n');
+    fprintf('RHP zeros at: '); fprintf('%+7.3f  ', real(rhp_z)); fprintf('rad/s\n\n');
 else
-    fprintf('  RHP zeros    = 0\n\n');
+    fprintf('RHP zeros = 0\n\n');
 end
 
 figure(402); clf; zplane(zero(Gvel_outer), pole(Gvel_outer)); grid on
@@ -117,13 +107,9 @@ else
     wc_max = Inf;
 end
 
-fprintf('==============================================================\n');
-fprintf('  STEP 1 — PICK SPECS\n');
-fprintf('==============================================================\n');
-fprintf('  wc      = %.2f rad/s   (target -- below z/5 = %.2f, RHP-zero ceiling)\n', ...
-        wc_vel, wc_max);
-fprintf('  gamma_M >= %.0f deg     (course default; ~10%% step overshoot)\n', gamma_M_spec);
-fprintf('  Ni      = %d            (PI zero at wc/Ni; course default)\n\n', Ni_vel);
+fprintf('wc      = %.2f rad/s  (z/5 = %.2f)\n', wc_vel, wc_max);
+fprintf('gamma_M = %.0f deg\n', gamma_M_spec);
+fprintf('Ni      = %d\n\n',     Ni_vel);
 
 
 %% ====================== STEP 2 — PLACE PI ZERO =========================
@@ -131,12 +117,7 @@ fprintf('  Ni      = %d            (PI zero at wc/Ni; course default)\n\n', Ni_v
 tau_i_vel = Ni_vel / wc_vel;
 C_PI_vel  = (tau_i_vel*s + 1) / (tau_i_vel*s);
 
-fprintf('==============================================================\n');
-fprintf('  STEP 2 — PLACE THE PI ZERO\n');
-fprintf('==============================================================\n');
-fprintf('  tau_i = Ni/wc        = %.4f s\n', tau_i_vel);
-fprintf('  PI zero              = %.4f rad/s   (one-third of wc)\n', 1/tau_i_vel);
-fprintf('  C_PI(s)              = (%.4f s + 1) / (%.4f s)\n\n', tau_i_vel, tau_i_vel);
+fprintf('tau_i = Ni/wc = %.4f s   (PI zero at %.4f rad/s)\n\n', tau_i_vel, 1/tau_i_vel);
 
 
 %% ====================== STEP 3 — PHASE BALANCE =========================
@@ -157,21 +138,15 @@ phi_G_only = phi_L_phys - phi_PI;
 
 phi_Lead = -180 + gamma_M_spec - phi_G_only - phi_PI;
 
-fprintf('==============================================================\n');
-fprintf('  STEP 3 — PHASE BALANCE: DO WE NEED A LEAD?\n');
-fprintf('==============================================================\n');
-fprintf('  MATLAB phase (unwrapped) = %+7.2f deg\n', phi_G_unwrapped);
-fprintf('  Phase wrapped to [-180,180] = %+7.2f deg   <-- physical reading\n', phi_L_phys);
-fprintf('  Plant-only phase           = %+7.2f deg\n', phi_G_only);
-fprintf('  PI phase contribution      = %+7.2f deg\n', phi_PI);
-fprintf('  Natural gamma_M            = %+7.2f deg     (= 180 + phase)\n', gamma_M_natural);
-fprintf('  Spec                       = %+7.2f deg\n', gamma_M_spec);
+fprintf('phase (raw)    = %+.2f deg\n', phi_G_unwrapped);
+fprintf('phase wrapped  = %+.2f deg\n', phi_L_phys);
+fprintf('plant-only     = %+.2f deg\n', phi_G_only);
+fprintf('phi_PI         = %+.2f deg\n', phi_PI);
+fprintf('natural PM     = %+.2f deg  (spec %d)\n', gamma_M_natural, gamma_M_spec);
 if gamma_M_natural >= gamma_M_spec
-    fprintf('  -> Natural gamma_M exceeds spec by %.2f deg. NO LEAD NEEDED.\n\n', ...
-            gamma_M_natural - gamma_M_spec);
+    fprintf('-> no Lead needed\n\n');
 else
-    fprintf('  -> Natural gamma_M is below spec by %.2f deg. Lead REQUIRED.\n\n', ...
-            gamma_M_spec - gamma_M_natural);
+    fprintf('-> Lead required\n\n');
 end
 
 % Visual: combined Bode with wc + PM-line markers
@@ -193,33 +168,22 @@ saveas(gcf, fullfile(IMG_DIR, 'regbot_task3_phase_balance.png'));
 % LOUD at wc (free integrator from Task 2's post-integrator), so Kp < 1.
 Kp_vel = 1 / magL_unscaled;
 
-fprintf('==============================================================\n');
-fprintf('  STEP 4 — SOLVE K_p so |L(j wc)| = 1\n');
-fprintf('==============================================================\n');
-fprintf('  |C_PI * Gvel,outer|_{wc} = %.4f       (need to scale to 1.000)\n', magL_unscaled);
-if magL_unscaled > 1
-    fprintf('  Curve is %+.2f dB ABOVE 0 dB at wc -- attenuate to crossover.\n', 20*log10(magL_unscaled));
-else
-    fprintf('  Curve is %+.2f dB BELOW 0 dB at wc -- amplify to crossover.\n', 20*log10(magL_unscaled));
-end
-fprintf('  Kp = 1/|.|               = %.4f\n\n', Kp_vel);
+fprintf('|L|_unscaled = %.4f at wc  (%+.2f dB)\n', magL_unscaled, 20*log10(magL_unscaled));
+fprintf('Kp = 1/|L|   = %.4f\n\n',   Kp_vel);
 
 C_vel = Kp_vel * C_PI_vel;
 L_vel = C_vel * Gvel_outer;
 T_vel = feedback(L_vel, 1);
-print_tf('C_vel = Kp * (tau_i s + 1)/(tau_i s)', C_vel);
+print_tf('C_vel', C_vel);
 
 
 %% ====================== STEP 5 — VERIFY =================================
 [GM, PM, ~, wc_ach] = margin(L_vel);
 
-fprintf('==============================================================\n');
-fprintf('  STEP 5 — VERIFY\n');
-fprintf('==============================================================\n');
-fprintf('  Achieved wc            = %.2f rad/s   (target %.0f)\n', wc_ach, wc_vel);
-fprintf('  Phase margin           = %.2f deg     (target >= %.0f)\n', PM, gamma_M_spec);
-fprintf('  Gain margin            = %.2f dB\n', 20*log10(GM));
-fprintf('  Closed-loop RHP poles  = %d\n\n',   sum(real(pole(T_vel)) > 0));
+fprintf('wc = %.2f rad/s\n', wc_ach);
+fprintf('PM = %.2f deg\n',   PM);
+fprintf('GM = %.2f dB\n',    20*log10(GM));
+fprintf('RHP CL poles = %d\n\n', sum(real(pole(T_vel)) > 0));
 
 save_plot(figure(400), @() margin(L_vel), ...
     'Step 5: Open-loop  L = C_{vel} G_{vel,outer}', ...
@@ -234,8 +198,5 @@ save_plot(figure(401), @() step(T_vel, 5), ...
 Kpvel = Kp_vel;
 tivel = tau_i_vel;
 
-fprintf('==============================================================\n');
-fprintf('  Copy-paste this block into regbot_mg.m (Task 3 gains)\n');
-fprintf('==============================================================\n');
-fprintf('    Kpvel  = %.4f;\n', Kpvel);
-fprintf('    tivel  = %.4f;\n\n', tivel);
+fprintf('Kpvel  = %.4f;\n',   Kpvel);
+fprintf('tivel  = %.4f;\n\n', tivel);
