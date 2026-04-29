@@ -50,8 +50,9 @@ open_system(model);
 Gwv   = identify_tf(model, '/Limit9v', '/wheel_vel_filter');
 Gtilt = identify_tf(model, '/vel_ref', '/robot with balance');
 
-P_count = sum(real(pole(Gtilt))>0);
-dc      = dcgain(Gtilt);
+P_count    = sum(real(pole(Gtilt))>0);
+dc         = dcgain(Gtilt);
+p_unstable = max(real(pole(Gtilt)));   % rate of the falling mode (rad/s)
 
 fprintf('==============================================================\n');
 fprintf('  STEP 0 — IDENTIFY THE PLANT\n');
@@ -63,7 +64,12 @@ print_tf('Gtilt', Gtilt);
 describe_plant(Gtilt);
 fprintf('  RHP poles of Gtilt   = %d   (P = %d for Nyquist bookkeeping)\n', P_count, P_count);
 fprintf('  DC gain of Gtilt     = %+.3e\n', dc);
-fprintf('  -> Plant is UNSTABLE: any tilt grows like e^(9.13 t) without feedback.\n\n');
+if P_count > 0
+    fprintf('  -> Plant is UNSTABLE: tilt grows like e^(%.2f t) without feedback.\n\n', ...
+            p_unstable);
+else
+    fprintf('  -> Plant is stable.\n\n');
+end
 
 % Plant-ID plots (used in the report + Obsidian doc)
 save_plot(figure(100), @() bode(Gwv), ...

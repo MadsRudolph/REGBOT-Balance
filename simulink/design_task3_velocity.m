@@ -80,10 +80,11 @@ saveas(gcf, fullfile(IMG_DIR, 'regbot_task3_plant_pz.png'));
 
 
 %% ====================== STEP 1 — PICK SPECS ============================
-% wc -- bandwidth knob. Lower bound: cascade rule (>= 5x slower than
-%       Task 2's 15 rad/s, so >= ~3 rad/s would already satisfy the
-%       cascade rule, but...). Upper bound: RHP-zero limit
-%       wc <= z/5 ~= 1.73 rad/s. We pick wc = 1 to stay well under.
+% wc -- bandwidth knob, with TWO upper bounds:
+%   (a) Cascade-separation rule: outer loop should be at least ~5x slower
+%       than the inner balance loop, so wc <= 15/5 = 3 rad/s.
+%   (b) RHP-zero limit:          wc <= z/5 ~= 1.7 rad/s.
+% (b) is the tighter of the two. We pick wc = 1 to stay well under.
 % gamma_M -- 60 deg, course default.
 % Ni      -- 3, course default.
 wc_vel       = 1;        % target crossover [rad/s]

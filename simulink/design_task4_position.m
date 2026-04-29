@@ -150,65 +150,95 @@ fprintf('  |C_Lead * Gpos,outer|_{wc} = %.4f\n', magL);
 fprintf('  Kp = 1 / |.|               = %.4f\n\n', Kp_pos);
 
 
-%% ====================== STEP 4 — LEAD DROP =============================
+%% ====================== STEP 4 — LEAD DECISION =========================
 % The ideal Lead (tau_d s + 1) is IMPROPER (numerator degree > denominator
-% degree). Simulink's Transfer Fcn block refuses improper TFs. Two options
-% in practice:
-%   (a) PROPER Lead (tau_d s + 1)/(alpha tau_d s + 1) -- adds a fast filter
-%       pole that costs some phase back.
-%   (b) Drop the Lead entirely -- accept the phi_Lead PM cost.
-% For Task 4 phi_Lead is tiny (~1.74 deg) so we drop it (option b). The
-% 25 dB gain margin dominates robustness anyway.
+% degree). Simulink's Transfer Fcn block refuses improper TFs. Three
+% implementation options:
+%   (a) Ideal Lead (tau_d s + 1)                              -- rejected
+%   (b) Proper Lead (tau_d s + 1)/(alpha tau_d s + 1), alpha<1
+%       -- adds a fast filter pole that costs some phase back
+%   (c) Drop the Lead entirely -- accept phi_Lead deg of PM cost
+%
+% Rule: if the required phi_Lead is small enough that the PM cost is
+% acceptable (LEAD_DROP_THRESHOLD_DEG), pick (c) for simplicity. Otherwise
+% pick (b) with a default alpha so the firmware PM still meets the spec.
+LEAD_DROP_THRESHOLD_DEG = 5;
+ALPHA                   = 0.1;
+
+if phi_Lead <= LEAD_DROP_THRESHOLD_DEG
+    tdpos_firmware  = 0;
+    C_Lead_firmware = tf(1);
+    decision = sprintf(...
+        'drop Lead (phi_Lead = %.2f deg <= threshold %.1f deg)', ...
+        phi_Lead, LEAD_DROP_THRESHOLD_DEG);
+else
+    tdpos_firmware  = tau_d_pos;
+    C_Lead_firmware = (tau_d_pos*s + 1) / (ALPHA*tau_d_pos*s + 1);
+    decision = sprintf(...
+        'proper Lead with alpha = %.2f (phi_Lead = %.2f deg > %.1f threshold)', ...
+        ALPHA, phi_Lead, LEAD_DROP_THRESHOLD_DEG);
+end
+
 fprintf('==============================================================\n');
-fprintf('  STEP 4 — LEAD DROP NOTE\n');
+fprintf('  STEP 4 — LEAD DECISION\n');
 fprintf('==============================================================\n');
 fprintf('  Ideal Lead (%.4f s + 1) is improper -- Simulink rejects it.\n', tau_d_pos);
-fprintf('  Required Lead is only %.2f deg.\n', phi_Lead);
-fprintf('  -> Drop the Lead in firmware (tdpos = 0). PM cost is tiny;\n');
-fprintf('     gain margin (computed in Step 5) dominates robustness.\n\n');
+fprintf('  Required phi_Lead       = %.2f deg\n', phi_Lead);
+fprintf('  Drop threshold          = %.1f deg\n', LEAD_DROP_THRESHOLD_DEG);
+fprintf('  Decision                : %s\n\n', decision);
 
 
-%% ====================== STEP 5 — VERIFY (with ideal Lead) ==============
-% We verify with the design-time controller (Lead included). The firmware
-% PM is ~phi_Lead deg lower than what `margin` reports here.
-C_pos = Kp_pos * C_Lead_pos;
-L_pos = C_pos * Gpos_outer;
-T_pos = feedback(L_pos, 1);
-[GM, PM, ~, wc_ach] = margin(L_pos);
+%% ====================== STEP 5 — VERIFY ================================
+% Verify margins for both the design-time controller (with ideal Lead)
+% and the firmware controller (whichever Lead implementation Step 4
+% selected). The mission-spec checks use the firmware controller.
+
+% Design-time (ideal Lead in series)
+L_pos_design = Kp_pos * C_Lead_pos * Gpos_outer;
+[GM_d, PM_d, ~, wc_d] = margin(L_pos_design);
+
+% Firmware (Step-4-selected Lead)
+L_pos_firmware = Kp_pos * C_Lead_firmware * Gpos_outer;
+T_pos_firmware = feedback(L_pos_firmware, 1);
+[GM_f, PM_f, ~, wc_f] = margin(L_pos_firmware);
 
 fprintf('==============================================================\n');
-fprintf('  STEP 5 — VERIFY (design-time, with ideal Lead)\n');
+fprintf('  STEP 5 — VERIFY\n');
 fprintf('==============================================================\n');
-fprintf('  Achieved wc            = %.3f rad/s   (target %.2f)\n', wc_ach, wc_pos);
-fprintf('  Phase margin           = %.2f deg     (target >= %.0f)\n', PM, gamma_M_spec);
-fprintf('  Gain margin            = %.2f dB\n',   20*log10(GM));
-fprintf('  Closed-loop RHP poles  = %d\n\n',      sum(real(pole(T_pos)) > 0));
+fprintf('  Design-time (with ideal Lead):\n');
+fprintf('    wc = %.3f rad/s    PM = %.2f deg    GM = %.2f dB\n', ...
+        wc_d, PM_d, 20*log10(GM_d));
+fprintf('  Firmware (%s):\n', decision);
+fprintf('    wc = %.3f rad/s    PM = %.2f deg    GM = %.2f dB\n', ...
+        wc_f, PM_f, 20*log10(GM_f));
+fprintf('  Closed-loop RHP poles   = %d\n\n', ...
+        sum(real(pole(T_pos_firmware)) > 0));
 
-% 2 m mission step
-[y_step, t_step] = step(2 * T_pos, 20);
+% 2 m mission step using the firmware controller (the actual deployed one)
+[y_step, t_step] = step(2 * T_pos_firmware, 20);
 peak_v   = max(gradient(y_step, t_step));
 settle_i = find(abs(y_step - 2) > 0.02*2, 1, 'last');
 settle_t = t_step(settle_i);
 
-fprintf('  2 m step response (linear model):\n');
+fprintf('  2 m step response (firmware controller):\n');
 fprintf('    Peak velocity (d/dt)  = %.3f m/s    (spec: must exceed 0.7 m/s)\n', peak_v);
 fprintf('    Settling time (2%%)    = %.2f s     (mission window: 10 s)\n\n', settle_t);
 
-save_plot(figure(500), @() margin(L_pos), ...
-    'Step 5: Open-loop  L = C_{pos} G_{pos,outer}', ...
+save_plot(figure(500), @() margin(L_pos_firmware), ...
+    'Step 5: Open-loop  L = C_{pos} G_{pos,outer}  (firmware)', ...
     IMG_DIR, 'regbot_task4_loop_bode.png');
 
-save_plot(figure(501), @() step(2 * T_pos, 20), ...
-    'Step 5: Closed-loop 2 m step (pos_{ref} = 2 m)', ...
+save_plot(figure(501), @() step(2 * T_pos_firmware, 20), ...
+    'Step 5: Closed-loop 2 m step (pos_{ref} = 2 m, firmware)', ...
     IMG_DIR, 'regbot_task4_step.png');
 
 
 %% ------------------- Write to workspace + gains block ------------------
 Kppos = Kp_pos;
-tdpos = 0;       % Lead dropped (improper-TF Simulink block) -- see Step 4
+tdpos = tdpos_firmware;       % whatever Step 4 selected
 
 fprintf('==============================================================\n');
 fprintf('  Copy-paste this block into regbot_mg.m (Task 4 gains)\n');
 fprintf('==============================================================\n');
 fprintf('    Kppos  = %.4f;\n', Kppos);
-fprintf('    tdpos  = %d;          %% Lead dropped (improper TF) -- see Step 4\n\n', tdpos);
+fprintf('    tdpos  = %.4f;       %% Lead per Step 4 decision\n\n', tdpos);
