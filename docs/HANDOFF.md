@@ -2,169 +2,198 @@
 course: "34722"
 course-name: "Linear Control Design 1"
 type: handoff
-tags: [LCD, regbot, handoff, pedagogical-rewrite]
-date: 2026-04-23
+tags: [LCD, regbot, handoff, learning]
+date: 2026-04-29
 ---
-# REGBOT Balance Assignment — Handoff to the next Claude session
+# REGBOT Balance Assignment — Handoff
 
-> [!abstract] Where we are
-> The four-loop cascade is **designed, built, and validated**. All numbers in the repo are correct. The LaTeX report compiles cleanly (26 pages) and all hardware tests passed with the v3 Day 5 on-floor gains. What's broken is *pedagogy*: `docs/REGBOT Balance Assignment.md` explains *what* we did but not *why*, and the user (who didn't author the MATLAB scripts and hasn't been following class closely) can't learn the control theory from the current doc. The rewrite goal is to turn the doc into a teaching walkthrough grounded in the 34722 Linear Control Design 1 course material.
+> [!abstract] Where the user is
+> The cascade is fully designed, simulated, and validated on the physical robot (v3 Day 5 on-floor gains, all four hardware tests passed 2026-04-22). What the user is doing **now** is going through the MATLAB design scripts and the Simulink model **to actually understand what's happening**, not to redesign anything. They didn't author the original scripts and have been iterating on style + pedagogy as they read through. The next session continues that walkthrough.
 
-> [!warning] Hard rules
-> 1. **Do not touch the MATLAB scripts** (`simulink/design_task*.m`, `simulink/regbot_mg.m`, `simulink/lib/pick_image_dir.m`, the `.slx` files). The user did not author them and wants them unchanged unless they explicitly ask.
-> 2. **Do not regenerate or touch the design-time plots** in `docs/images/` (all `regbot_*.png`). They are from the 2026-04-22 MATLAB runs and match the numbers the rewritten doc will use.
-> 3. **Do not alter the hardware test results** in `docs/Test Plan.md` (experimental facts) or the log files in `logs/`.
-> 4. **Do not change the numerical content** of the four task sections — `K_p = 13.2037`, `\omega_c = 30`, the phase-balance arithmetic, `\gamma_M = 60°` achievement, etc. Those are correct. The rewrite adds pedagogy *around* them.
-> 5. **Commit messages must not mention Claude or AI.** Project-wide rule.
-> 6. **One task at a time.** Rewrite Task 1, commit, wait for user to say "ok keep going", then Task 2/3/4. Do not batch.
-> 7. **Keep the collapsible `[!tldr]+` callouts already present at the top of each task.** Extend the detail below them; do not remove or duplicate the summary.
-> 8. **The DTU vault no longer mirrors regbot content.** `docs/` is the single source of truth. Cross-vault links to DTU-vault files use `obsidian://open?vault=Obsidian&file=...`.
+> [!warning] Hard rules carried over
+> 1. **No AI / Claude attribution in commits** — global rule, project-wide.
+> 2. **Do not alter the canonical numerical content** of the four loops — the v3 gains in `simulink/regbot_mg.m` and `config/regbot_group47.ini` are correct and validated on hardware. Don't "improve" them.
+> 3. **Do not regenerate plots in `docs/images/`** unless the user explicitly asks. The PNGs were regenerated this session to match the new script style, and committed. Future-you re-running scripts will overwrite them — that's fine if the user asked, surprising otherwise.
+> 4. **Hardware test results in `docs/Test Plan.md` are experimental facts.** Don't touch.
+> 5. **The Report submodule (`Report/`) is a real git submodule** at the latest v3 commit (`799e873`). It's also a *symlink* into `Obsidian/Courses/.../regbot/Report` — that's a known quirk, don't try to absorb it. (The previous session's HANDOFF described this in detail; the symlink layout is intentional for now.)
+> 6. **Don't add `=====` decorative banners back to the design scripts.** The user explicitly stripped them this session.
 
 ---
 
-## 1. Current repo state (as of 2026-04-23)
+## What this session did
 
-All three repos are clean and fully pushed.
+Three rounds of iteration on the four `simulink/design_task*.m` scripts:
+
+### Round 1 — Inline math helpers, replace plot helpers with built-ins
+
+Removed five helpers from `simulink/lib/` (no longer used anywhere):
+- `identify_tf.m` — wrapped `linio` + `linearize` + `ss2tf`. Now inlined at every call site so the linearization step is visible.
+- `describe_plant.m` — printed poles/zeros/DC gain/RHP-pole count. Now inlined.
+- `plot_pz_stability.m` — custom shaded LHP/RHP pole-zero map. Replaced with `zplane(zero(G), pole(G))` from the Signal Processing Toolbox (user's choice over `pzmap`).
+- `plot_nyquist_critical.m` — custom Nyquist with (-1, 0) marker. Replaced with manual data extraction from `nyquist()` + a `plot(-1,0,'r+')` overlay. **See Round 3 below for the final shape — the simple `nyquist(G)` call wasn't enough.**
+- `ternary.m` — one-liner conditional. Inlined as `if/else`.
+
+**Helpers kept** (these are *plumbing*, not math, per the user's distinction): `pick_image_dir.m`, `save_plot.m`, `print_tf.m`, `poly_to_str.m`. They live in `simulink/lib/` and are added to the path by `simulink/regbot_mg.m`.
+
+> [!important] User's mental model for "math vs plumbing"
+> The user wants to **see the control-design math top-to-bottom** in each script (linearization, phase-balance, magnitude condition, post-integrator placement, etc.). They're fine with helpers for boilerplate (file paths, figure saving, transfer-function display formatting). Don't reintroduce helpers that hide a control-theory step.
+
+### Round 2 — Trim verbose fprintf to minimal
+
+The user pointed at a typical Step-N block (`fprintf('====...\n'); fprintf('  STEP 4 — VERIFY\n'); ...`) and called out everything that "makes it pretty in the terminal" as overkill. Stripped from all four scripts:
+
+- `=====` decoration lines
+- `STEP N — TITLE` banners (the `%%` MATLAB cell headers in the editor still mark sections — those stay)
+- Inline pedagogical parentheticals like `(course default)`, `(target X)`, `(negative is OK on P=1 plants...)`
+- Alignment padding (multi-space columns)
+- "Copy-paste this block into regbot_mg.m" headers — the bare gain assignments are still printed, just without the wrapper
+
+Result: each script now prints just the **values with minimal labels**, plus `print_tf` output where relevant. About 50 % shorter terminal output.
+
+### Round 3 — Fix T2 Nyquist plots
+
+The user noticed both Nyquist plots in T2 looked wrong:
+- **`Gtilt`** Nyquist: the default `nyquist(G)` overlays an M-circle / dB-grid that clutters the plot.
+- **`Gtilt_post`** Nyquist: badly broken because `Gtilt_post` has a free integrator (from `C_PI_post`'s `1/s`). The curve heads to ±∞ at low ω, and MATLAB's auto-axis blew up to ±40 imaginary, collapsing the entire curve into a horizontal smear with no visible (-1, 0) neighbourhood.
+
+Fix: extract `[re, im] = nyquist(G)` and plot manually. Specifically:
+- Solid blue line for the ω > 0 branch, dashed blue for the mirror (ω < 0)
+- Red `+` marker at `(-1, 0)`
+- **Three direction arrows** at 20 / 50 / 80 % along the ω > 0 branch (`quiver` with `MaxHeadSize=5`) so encirclement direction is unambiguous
+- `axis equal; grid on`
+- For `Gtilt_post`: sample only `logspace(-1, 4, 2000)` (skip ω < 0.1 rad/s), then explicitly `xlim([-3 1]); ylim([-3 3])` to focus on the critical-point neighbourhood
+
+This shape lives in two places in `simulink/design_task2_balance.m` (figures 106 and 301). It's the right pattern if a similar Nyquist plot ever needs to appear in T3/T4 (currently they don't).
+
+### Things the user understood this session, conversationally
+
+These came up while reading the code together — keeping a record so the next session doesn't re-explain unless asked:
+
+- **The two PI blocks in `Tilt_Controller`** are both `(τs+1)/(τs)` — the left one is the post-integrator (`tipost = 0.1245`, zero at the magnitude peak ω_peak = 8.03 rad/s, reshapes Gtilt for stabilizability), the right one is the standard outer PI (`titilt = 0.2`, zero at ω_c/N_i = 5 rad/s, drives e_ss to 0). Method 2's two-stage strategy: stabilize first, then standard design.
+- **The gyro-shortcut Lead** (`tdtilt · gyro + θ` summed before the comparator) is mathematically `(τs+1)·θ`, i.e. the *ideal* Lead with no α-pole. The α-pole exists in the proper Lead `(τs+1)/(ατs+1)` to filter numerical-differentiation noise. Since the gyro is a *physical* derivative sensor, that filter is unnecessary — slide showed the algebraic derivation (`1/(ατs+1) · (τ·sθ + θ) → τ·gyro + θ`).
+- **Why Method 2 needs the sign flip + post-integrator before the standard PI**: with `P = 1` RHP poles, Nyquist needs `N = -1` (one CCW encirclement of (-1, 0)). Positive Kp can't deliver that when DC gain > 0; flipping sign + reshaping the magnitude peak does.
+
+---
+
+## Repo state right now
 
 | Repo | Branch | Tip | Origin |
 |---|---|---|---|
-| `REGBOT-Balance-Assignment` (`Skab101/REGBOT-Balance`) | `main` | `74eb90a` — Test Plan TL;DR callouts | up to date |
-| `Report` submodule (`MadsRudolph/REGBOT-Balance-assignment`) | `main` | `17c2438` — Simulink figures | up to date |
-| `DTU` main (`MadsRudolph/DTU`) | `main` | `d615632` — regbot submodule bump | up to date |
+| `REGBOT-Balance-Assignment` | `main` | `bf9408c` Trim fprintf, fix T2 Nyquist | up to date |
+| `Report` (submodule) | `main` | `799e873` Trim report to 5 pages | up to date (parent records this SHA) |
+| `DTU` parent (regbot is itself a submodule of DTU) | `main` | not bumped this session | parent's submodule pointer for regbot is *behind* by `bf9408c` and `032ac38` — not relevant unless the user wants to bump |
 
-Backup branch `v1-day4-wheels-up` exists on both regbot and Report origins (the pre-redesign state, in case it's ever needed).
+> [!info] DTU submodule pointer
+> The user hasn't asked to bump the DTU `4. Semester/Linear Control Design/REGBOT-Balance-Assignment` submodule pointer. Don't do it unless they ask. This session pushed two new commits to `Skab101/REGBOT-Balance` `main`; if the user wants the DTU vault to point at the new tip, that's a separate `git add` + commit + push from the DTU root.
 
-Report is now a **real submodule of the regbot repo** at `Report/` (previously a symlink pointing into the DTU vault). DTU main no longer registers Report as a submodule; the regbot repo owns it.
+### Uncommitted state on disk
 
-`docs/_DTU-vault` is **not** expected to exist — earlier in this session's work a directory-junction approach was tried and rejected. The current approach is `obsidian://` URI links inside the markdown, pointing at `vault=Obsidian&file=<path>`.
+- `docs/REGBOT Balance Assignment.md` — pure CRLF line-ending churn from Windows tooling. **No semantic change.** Skipped from this session's commit by design. If git keeps showing it as modified, that's a `core.autocrlf` configuration thing, not real work.
 
----
-
-## 2. The rewrite task
-
-### What's wrong with the current doc
-
-`docs/REGBOT Balance Assignment.md` is currently 380 lines, terse, accurate, and reference-style. Per-task sections jump straight into phase-balance arithmetic with lines like:
-
-> Place the PI zero at $\omega_c/N_i$ with $N_i = 3$. $\tau_i = 3/15 = 0.200$ s.
-
-That states the manipulation but doesn't explain what $N_i$ *means*, why 3 is the standard choice, what "placing a zero" does to the Bode plot, or how the student would arrive at this step on their own. The user needs a *teaching walkthrough*, not a reference card.
-
-### What to rewrite
-
-**PRIMARY:** `docs/REGBOT Balance Assignment.md` — per-task sections (Task 1, Task 2, Task 3, Task 4) and the cascade-architecture intro.
-
-**SECONDARY (only after user confirms main doc):** possibly `docs/Test Plan.md` — less pedagogy needed (it's procedural hardware testing), but per-test callouts could get a similar expansion. Ask the user before touching it.
-
-### Step 1: read the course material first (before writing anything)
-
-The user explicitly asked for the rewrite to be grounded in the 34722 course's language and framing, not generic textbook phrasing. Open these four DTU-vault lecture notes and read them carefully:
-
-- `C:\Users\Mads2\DTU\Obsidian\Courses\34722 Linear Control Design 1\Lecture Notes\Fundamentals - Intuitive Control Theory.md`
-- `C:\Users\Mads2\DTU\Obsidian\Courses\34722 Linear Control Design 1\Lecture Notes\Lesson 9 - PI-Lead Design with Specifications.md`
-- `C:\Users\Mads2\DTU\Obsidian\Courses\34722 Linear Control Design 1\Lecture Notes\Lesson 10 - Unstable Systems and REGBOT Balance.md`
-- `C:\Users\Mads2\DTU\Obsidian\Courses\34722 Linear Control Design 1\Lecture Notes\Worked Example - REGBOT Position Controller.md`
-
-Relevant PDFs in the same course folder:
-- `Slides\Lecture_10_Unstable_systems.pdf`
-
-Match the course's notation (e.g.\ if the course uses $\phi_G(j\omega_c)$ instead of $\angle G(j\omega_c)$, use that), match the way the course talks about Bode plots, phase balance, N_i, the post-integrator, gyro Lead, etc. The goal is the user recognises the language when they read the rewrite.
-
-### Step 2: add a short "How to read Bode plots in this doc" intro section
-
-After the cascade architecture diagram, insert a ~60–80 line section titled something like "Control-design basics used in this doc". Cover (tightly, with inline links to the lecture notes above):
-
-- **Bode plot** — magnitude (dB) and phase (deg) vs. $\omega$; why it's the right tool here (frequency-domain phase-balance method).
-- **Crossover frequency $\omega_c$** — where $|L(j\omega)|$ crosses $1$ (0 dB); approximately equals the closed-loop bandwidth. Picking $\omega_c$ is picking how fast the loop should react.
-- **Phase margin $\gamma_M$** — $180° + \angle L(j\omega_c)$; what $60°$ means physically, what happens at $30°$ or $0°$.
-- **Why $N_i = 3$** — PI zero at $\omega_c/N_i$; the trade-off between integral action at $\omega_c$ vs. phase loss at $\omega_c$. $N_i = 3$ is the course's default.
-- **The phase-balance recipe** — pick $\omega_c$, pick $N_i$, compute $\phi_G(j\omega_c)$, compute $\phi_{PI}$, solve for $\phi_\text{Lead}$, then $\tau_d$ and $K_p$. Shown step by step in each Task section below.
-- **Cascaded-loop separation** — why each outer loop must be $\geq 5\times$ slower than the one inside it (otherwise the two loops fight each other and neither hits its designed bandwidth).
-- **Negative gain margin on an unstable plant** — why it's *expected* for Task 2 (Lecture 10 slides 5–7 / Fundamentals §9).
-
-Not a course in a section — just enough that the derivations below don't require the reader to context-switch to the DTU vault every sentence.
-
-### Step 3: rewrite each Task section as a pedagogical walkthrough
-
-Structure below the existing `[!tldr]+` callout (which stays as-is):
-
-1. **"What this loop does"** — 2–3 sentences on the loop's job in the cascade and why this specific control structure (PI, PILead, P, etc.) is the right choice for this plant.
-2. **Numbered step-by-step derivation.** Each step should have roughly these four parts:
-   - **What we do.** The manipulation. ("Place the PI zero at $\omega_c/N_i = 10$ rad/s.")
-   - **What that does in Bode/Nyquist terms.** The geometric meaning. ("This adds a slope change at 10 rad/s: below 10 the controller is mostly integrator (-20 dB/dec, phase near -90°), above 10 it's mostly proportional (0 dB/dec, phase near 0°).")
-   - **Why we do it.** The rule from the lecture, with an inline `obsidian://` URI link to the specific lecture or worked example when possible. ("We place the zero $N_i = 3$ times below $\omega_c$ so the PI integrator has done most of its phase drop by the time we cross over — see [Lesson 9 …](obsidian://…).")
-   - **What the MATLAB script does here.** The line or block from `design_task*.m` that implements this step. ("`tau_i = Ni / wc` in `design_task1_wheel.m` — this is just the formula, nothing mysterious.")
-   - **What the output number means.** How to interpret it. ("`Kp = 13.2037` — the controller multiplies the error by this much. To see why, check the Bode plot below: without it the magnitude at $\omega_c$ is $0.076$, so $K_p = 1/0.076 \approx 13.2$ lifts it to exactly $1$.")
-3. **Verification.** Keep the existing `margin(L)` table and plots; add a paragraph saying how to *read* each plot — what the curves show, where the crossover is, what the GM/PM markers mean, how to spot trouble.
-4. **Copy-paste block for `regbot_mg.m`** stays as-is.
-5. **Simulink sanity sim caption** stays as-is (or tightens). The image embed stays.
-
-Expected per-task length: ~150–250 lines (currently ~40–80). Total doc target: **700–900 lines** (up from 380). That's the cost of being pedagogical, but with the collapsible callouts + tight paragraphs it stays navigable.
-
-### Step 4: workflow — one task at a time
-
-1. Propose Task 1 as a specimen. Commit it.
-2. Ask the user: *"Is this the right depth, tone, and level of hand-holding? Anything to adjust before I apply the same treatment to Tasks 2/3/4?"*
-3. On green-light, do Tasks 2, 3, 4 in the same style.
-4. Then ask whether to extend the same treatment to the "How to read Bode plots" intro section (if not already included in the Task 1 pass) and to `docs/Test Plan.md`.
-
-### Step 5: keep everything else working
-
-- All 15+ `![[regbot_*.png]]` image embeds must still resolve — don't rename or move images.
-- All `obsidian://open?vault=Obsidian&file=...` links must stay valid (don't accidentally URL-encode them twice or drop the `vault=` param).
-- All local `[[Lesson 10 ...]]`, `[[HANDOFF]]`, `[[REDESIGN_ROADMAP]]` wikilinks must still resolve.
-- Don't break existing `\boxed{}` controller-expression math or the table structure for final gains / hardware validation.
-- The LaTeX report (`Report/sections/*.tex`) is **separately authored** and out of scope for this rewrite. Only touch Report if the user asks.
+That's the only thing not committed.
 
 ---
 
-## 3. Commit workflow for each Task
+## What the next session probably looks like
 
-1. Edit `docs/REGBOT Balance Assignment.md` for one Task section.
-2. `git add docs/REGBOT Balance Assignment.md` on the regbot repo.
-3. `git commit` on regbot main with a specific message (e.g.\ "Task 1 section: pedagogical rewrite with course-material framing"). **No Claude/AI mentions**.
-4. `git push origin main` on regbot.
-5. `cd ..` to DTU main, `git add "4. Semester/Linear Control Design/REGBOT-Balance-Assignment"`, commit bumping the submodule, `git push`.
-6. Present the new Task section to the user and wait for feedback.
+The user explicitly said: *"i want to keep on going through the matlab scripts and simulink model in order to understand what exactly is going on"*.
 
----
+So this is **a learning walkthrough, not an implementation task**. The next instance should:
 
-## 4. Files + paths reference
+### 1. Pick up wherever the user left off
 
-- Target file: `C:\Users\Mads2\DTU\4. Semester\Linear Control Design\REGBOT-Balance-Assignment\docs\REGBOT Balance Assignment.md`
-- Lecture-material inputs (DTU vault):
-  - `C:\Users\Mads2\DTU\Obsidian\Courses\34722 Linear Control Design 1\Lecture Notes\Fundamentals - Intuitive Control Theory.md`
-  - `C:\Users\Mads2\DTU\Obsidian\Courses\34722 Linear Control Design 1\Lecture Notes\Lesson 9 - PI-Lead Design with Specifications.md`
-  - `C:\Users\Mads2\DTU\Obsidian\Courses\34722 Linear Control Design 1\Lecture Notes\Lesson 10 - Unstable Systems and REGBOT Balance.md`
-  - `C:\Users\Mads2\DTU\Obsidian\Courses\34722 Linear Control Design 1\Lecture Notes\Worked Example - REGBOT Position Controller.md`
-- Related (keep untouched unless asked):
-  - `docs/Test Plan.md`
-  - `docs/REDESIGN_ROADMAP.md`
-  - `docs/Lesson 10 - Unstable Systems and REGBOT Balance.md` (local copy of the DTU-vault lecture note)
-  - `docs/PLAN.md`
-  - `docs/images/` (all plots)
-  - `simulink/*` (all MATLAB)
-  - `Report/` (LaTeX submodule)
+Likely candidates the user might want to dig into next:
+- The **Simulink model** (`simulink/regbot_1mg.slx`) — they've seen the `Tilt_Controller` subsystem in detail today. Other subsystems they might want to walk: the wheel-velocity controller (with its parallel-form PI), the Velocity PI, the position P loop, the `robot with balance` Simscape Multibody plant, the disturbance injection block.
+- The **design scripts** — T1 and T4 still haven't been walked through line-by-line in conversation as much as T2. T3 has been touched but lightly.
+- The **firmware ini** (`config/regbot_group47.ini`) — useful when discussing how a controller block in MATLAB maps to the firmware-side dialog parameters.
+- The **plant-identification** step itself — Day 5 black-box fitting, what `tfest` does, why a 1-pole fit was chosen, etc. (This data lives in `data/Day5_results_v2.mat`.)
 
----
+### 2. Match the established style
 
-## 5. Summary of what's been done before this handoff
+When asked to edit code, the conventions established this session are:
+- Math is inlined (no helpers hiding control-theory steps)
+- Plumbing helpers are fine (`save_plot`, `print_tf`, `pick_image_dir`, `poly_to_str`)
+- Terminal output is minimal — no decorative headers, no pedagogical parentheticals, no alignment padding
+- For Nyquist plots: extract data manually, axis equal, focus axis on (-1, 0), draw direction arrows
+- For pole-zero maps: `zplane(zero(G), pole(G))`
+- For Bode plots: `bode(G, {0.1, 1000})` is fine
+- The user's working language is English (commit messages, docs, comments)
 
-Long session's worth of work already landed — just context for understanding why the repo looks how it does:
+### 3. Match the explanation style they like
 
-- Day 5 on-floor redesign: $K_{pwv}$ went 3.31 → 13.2037 after discovering the first campaign used wheels-up identification; all four loops retuned; hardware re-validated 2026-04-22. See `docs/REDESIGN_ROADMAP.md` for the phase tracker (all phases ✓).
-- `day5-redesign` branch merged into `main` on both regbot and Report submodules; backup branch `v1-day4-wheels-up` preserved.
-- DTU vault cleaned of all regbot mirrors (previously held redundant copies of HANDOFF/Test Plan/REGBOT Balance Assignment/Images).
-- Regbot repo structure simplified: dropped empty `missions/`, `src/`, `scripts/`, and redundant `figures/` (every PNG was already in `docs/images/`).
-- `simulink/lib/pick_image_dir.m` now always writes to `docs/images/` (previously mirrored into the DTU vault).
-- Report moved from being a DTU-side submodule + symlink to being a real submodule of the regbot repo.
-- Cross-vault links rewritten from `[[wikilinks]]` to `obsidian://` URI markdown links.
-- Main doc rewritten from 1262 lines (sprawling) to 380 lines (lean reference). Collapsible `[!tldr]+` callouts added to the top of each Task section.
-- Test Plan got per-test collapsible narrative callouts.
-- Simulink top-level model + Tilt_Controller subsystem screenshots added (`docs/images/regbot_simulink_model.png`, `regbot_simulink_tilt_controller.png`) — embedded in the main doc and in the LaTeX report.
+Looking at how this session's conversation went, the user responds well to:
+- **Concrete + grounded**: explain what a block *is* algebraically, what it *does* dynamically, *why* it's there (in terms of Method 2 / phase balance / Nyquist / cascade rules)
+- **Tables and short bulleted lists** over prose paragraphs
+- **Cross-references to the design scripts** by file path + line number when applicable
+- Brief mathematical derivations inline in `$$...$$` when they clarify
+- Avoid rebuilding the entire course from scratch in every answer — assume they remember what we covered earlier in the day (or reference the lecture notes)
 
-Now: the user wants the *lean* main doc turned into a *pedagogical* one, grounded in the course's own explanations.
+### 4. Useful context the user has at hand
+
+- Lecture notes in their DTU vault (Obsidian) at `C:\Users\Mads2\DTU\Obsidian\Courses\34722 Linear Control Design 1\Lecture Notes\` — they have lesson notes for Lessons 1-12, plus Fundamentals + Diagnostic Guide + Worked Example for the position controller.
+- The slides PDFs live at `Slides/Lecture_*.pdf` in the same Obsidian folder. The user often shares screenshots from these — they're reading the slide deck alongside the code.
+- The user is `Mads Rudolph (s246132)`, one of four group members.
+- Today's date when this handoff was written: 2026-04-29.
 
 ---
 
-*Handoff written: 2026-04-23. Pick up from Step 1: open the four lecture notes and read them before touching the doc.*
+## Quick orientation map
+
+```
+REGBOT-Balance-Assignment/
+├── README.md                  -- run order, prerequisites, structure overview
+├── config/regbot_group47.ini  -- v3 firmware gains (load via REGBOT GUI)
+├── data/Day5_results_v2.mat   -- on-floor plant identification (G_1p_avg)
+├── docs/
+│   ├── REGBOT Balance Assignment.md  -- main pedagogical writeup of all 4 tasks
+│   ├── Test Plan.md                  -- hardware test results (do not modify)
+│   ├── PLAN.md                       -- early phase plan
+│   ├── REDESIGN_ROADMAP.md           -- Day 5 redesign phase tracker (all done except merge)
+│   ├── HANDOFF.md                    -- this file
+│   └── images/                       -- 47 PNGs, single source for Obsidian + LaTeX
+├── logs/test*_v3_onfloor_*.txt       -- raw REGBOT logs, 2026-04-22 hardware run
+├── simulink/
+│   ├── regbot_1mg.slx                -- the Simulink model (cascade + Simscape plant)
+│   ├── regbot_mg.m                   -- workspace loader (params + committed gains)
+│   ├── design_task1_wheel.m          -- Day 5 plant from MAT, PI design
+│   ├── design_task2_balance.m        -- linearise vel_ref→tilt, Method 2
+│   ├── design_task3_velocity.m       -- linearise theta_ref→v, PI
+│   ├── design_task4_position.m       -- linearise pos_ref→x, P
+│   └── lib/                          -- plumbing helpers only:
+│       ├── pick_image_dir.m          -- always returns docs/images/
+│       ├── save_plot.m               -- figure(N); plot; title; saveas
+│       ├── print_tf.m                -- pretty-print a TF (no built-in display)
+│       └── poly_to_str.m             -- helper for print_tf
+└── Report/                           -- LaTeX submodule (real git submodule + symlink quirk)
+```
+
+### Canonical gains (do not change)
+
+| Task | Loop | Type | ω_c | γ_M | Parameters |
+|---|---|---|---|---|---|
+| 1 | Wheel speed | PI | 30 rad/s | 82.85° | `Kpwv = 13.2037`, `tiwv = 0.1` |
+| 2 | Balance | PILead + post-PI | 15 rad/s | 60° | `Kptilt = 1.1999` (firmware: **−1.1999**), `titilt = 0.2`, `tdtilt = 0.0442`, `tipost = 0.1245` |
+| 3 | Velocity | PI | 1 rad/s | 68.98° | `Kpvel = 0.1581`, `tivel = 3.0` |
+| 4 | Position | P (Lead dropped) | 0.6 rad/s | ~57° | `Kppos = 0.5411`, `tdpos = 0` |
+
+### Two facts that bite if forgotten
+
+1. **Firmware sign flip on `[cbal] kp`** — the firmware Balance block does not absorb Method 2's `−1`. The ini must enter `kp = -1.1999` (negative). Positive runs the wheels into a positive-feedback runaway.
+2. **Day 5 redesign is canonical** — the original design used the Day 4 wheels-up plant `13.34/(s+35.71)`. That plant was 6× faster than the on-floor reality, so Test 0 measured a 4× slower effective inner loop. Re-fit on-floor `2.198/(s+5.985)`, all four loops retuned, hardware re-validated. **All numbers in the repo are v3.** Don't be confused by the v1-day4-wheels-up backup branch on origin.
+
+---
+
+## Commit workflow when work needs committing
+
+Standard:
+1. `git status --ignore-submodules=all --short` to see what changed
+2. Stage selectively — *do not* `git add -A` because the user often has CRLF-churn `.md` files or stray `.slx` save artefacts they don't want bundled in
+3. Commit with a clear title + body. **No `Co-Authored-By` lines, no "Generated with Claude" lines, no AI attribution.** Just write it as if the developer wrote it.
+4. Push to `origin/main`
+5. Don't bump the DTU parent submodule pointer unless asked
+
+For the Report submodule: it lives at `Report/` as both a git submodule *and* a symlink into the Obsidian vault. Don't try `git submodule absorbgitdirs` — the symlink confuses git's relative-path resolution and the previous session got into a mess unwinding a half-completed absorb. The submodule wiring is functional; leave it.
+
+---
+
+*Written 2026-04-29. The next session picks up from "the user wants to walk through the MATLAB and Simulink to understand the cascade in detail" — be a patient guide, match the established style, and ask before making changes that affect the canonical numerical content.*
