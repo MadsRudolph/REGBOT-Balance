@@ -1,13 +1,5 @@
 function img_dir = pick_image_dir()
-%PICK_IMAGE_DIR  Return the folder where design plots should be saved.
-%
-% Always the submodule's docs/images/ folder. Historically this helper
-% also mirrored into the DTU Obsidian vault, but docs/ is now the sole
-% source of truth for both notes and figures -- keeping two copies in
-% sync became a constant chore.
-%
-% The folder is created if missing so the first design-script run on a
-% fresh clone does not fail.
+%PICK_IMAGE_DIR  Return docs/images/ in the repo, creating it if missing.
 
 here    = fileparts(fileparts(mfilename('fullpath')));   % simulink/
 img_dir = fullfile(here, '..', 'docs', 'images');
