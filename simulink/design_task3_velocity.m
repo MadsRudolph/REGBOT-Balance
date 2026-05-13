@@ -1,36 +1,12 @@
-%% =======================================================================
-%  Task 3 — Velocity outer loop (PI)  step-by-step
-%  =======================================================================
-%
-%  Walks through the design DECISION BY DECISION. Run the whole script and
-%  read top-to-bottom: each section prints what we do and why, and saves
-%  the figure that visualises it.
-%
-%  Plant:   Gvel,outer(s) = theta_ref -> wheel_vel_filter  (with Tasks 1+2
-%           closed and active in the workspace).
-%           Stable (Task 2 stabilised the pendulum), but has an RHP zero
-%           at +8.5 rad/s -- a hard physics limit on bandwidth.
-%
-%  Specs:   wc_vel = 1 rad/s   (well below z/5 ~= 1.7 rad/s),
-%           gamma_M >= 60 deg, Ni = 3.
-%
-%  Steps:
-%    Step 0  Identify the plant         -> figure 402
-%    Step 1  Pick specs                 -> console only
-%    Step 2  Place PI zero              -> console only
-%    Step 3  Phase balance              -> figure 403 (combined-Bode check)
-%    Step 4  Solve Kp                   -> console only
-%    Step 5  Verify                     -> figures 400, 401
-%
-%  Run this script on its own, AFTER pasting Task 1 + Task 2 gains into
-%  regbot_mg.m. The Simulink model must already have:
-%    - A Velocity PI block named whose output passes through Kpvel_gain
-%    - The block named exactly 'Kpvel_gain' (so linearize can find it)
-%  =======================================================================
+%% Task 3 — Velocity outer loop (PI)
+%  Plant:  Gvel,outer(s) = theta_ref -> wheel_vel_filter (with Tasks 1+2
+%          closed). Stable; RHP zero at +8.5 rad/s sets a bandwidth ceiling.
+%  Specs:  wc_vel = 1 rad/s (< z/5), gamma_M >= 60 deg, Ni = 3.
+%  Prereq: Tasks 1+2 gains pasted into regbot_mg.m; model has 'Kpvel_gain'.
+%  See docs/MATLAB Walkthrough.md §4 for the derivation.
 
 close all; clear;
 
-% --- Load workspace ------------------------------------------------------
 addpath(fileparts(mfilename('fullpath')));
 regbot_mg;
 
@@ -41,23 +17,16 @@ IMG_DIR = pick_image_dir();
 VEL_CTRL_OUT_BLOCK = '/Kpvel_gain';   % linearisation break point
 
 
-%% ====================== STEP 0 — IDENTIFY THE PLANT ====================
+%% ====== STEP 0 — IDENTIFY THE PLANT =====
 % Linearise theta_ref -> wheel_vel_filter with the velocity loop broken at
-% the Kpvel_gain output. Tasks 1 + 2 stay closed (they're already active in
-% regbot_mg.m), so this is the plant the velocity controller sees.
-%
+% Kpvel_gain. Tasks 1+2 stay closed (non-zero gains in the workspace).
 % Defensive zeroing in case someone edited regbot_mg:
-Kpvel = 0;     
-tivel = 1;     
+Kpvel = 0;
+tivel = 1;
 
 load_system(model);
 open_system(model);
 
-% --- Linearise Gvel,outer: theta_ref -> wheel_vel_filter ----------------
-% Open the velocity loop at the Kpvel_gain output (so the velocity PI is
-% NOT in the linearised path) and pick up the wheel-velocity filter as
-% the output. Tasks 1+2 stay closed because their gains are non-zero in
-% the workspace.
 io(1) = linio([model VEL_CTRL_OUT_BLOCK], 1, 'openinput');
 io(2) = linio([model '/wheel_vel_filter'], 1, 'openoutput');
 setlinio(model, io);
@@ -81,20 +50,9 @@ else
     fprintf('RHP zeros = 0\n\n');
 end
 
-figure(402); clf; zplane(zero(Gvel_outer), pole(Gvel_outer)); grid on
-xlim([-50 10]); ylim([-50 50]);
-title('Pole-zero map: G_{vel,outer}');
-saveas(gcf, fullfile(IMG_DIR, 'regbot_task3_plant_pz.png'));
-
-
-%% ====================== STEP 1 — PICK SPECS ============================
-% wc -- bandwidth knob, with TWO upper bounds:
-%   (a) Cascade-separation rule: outer loop should be at least ~5x slower
-%       than the inner balance loop, so wc <= 15/5 = 3 rad/s.
-%   (b) RHP-zero limit:          wc <= z/5 ~= 1.7 rad/s.
-% (b) is the tighter of the two. We pick wc = 1 to stay well under.
-% gamma_M -- 60 deg, course default.
-% Ni      -- 3, course default.
+%% ====== STEP 1 — PICK SPECS =====
+% wc bounded by: (a) cascade rule wc <= 15/5 = 3 rad/s,
+% (b) RHP-zero wc <= z/5 ~= 1.7 rad/s. (b) is tighter; pick wc = 1.
 wc_vel       = 1;        % target crossover [rad/s]
 gamma_M_spec = 60;       % phase margin spec [deg]
 Ni_vel       = 3;        % PI zero at wc/Ni
@@ -112,23 +70,20 @@ fprintf('gamma_M = %.0f deg\n', gamma_M_spec);
 fprintf('Ni      = %d\n\n',     Ni_vel);
 
 
-%% ====================== STEP 2 — PLACE PI ZERO =========================
-% Same recipe as Task 1: tau_i = Ni / wc.
+%% ====== STEP 2 — PLACE PI ZERO =====
 tau_i_vel = Ni_vel / wc_vel;
 C_PI_vel  = (tau_i_vel*s + 1) / (tau_i_vel*s);
 
 fprintf('tau_i = Ni/wc = %.4f s   (PI zero at %.4f rad/s)\n\n', tau_i_vel, 1/tau_i_vel);
 
 
-%% ====================== STEP 3 — PHASE BALANCE =========================
-% Read phase of (C_PI * Gvel,outer) at wc and decide if a Lead is needed.
+%% ====== STEP 3 — PHASE BALANCE =====
 [magL_unscaled, phi_G_unwrapped] = bode(C_PI_vel * Gvel_outer, wc_vel);
 magL_unscaled    = squeeze(magL_unscaled);
 phi_G_unwrapped  = squeeze(phi_G_unwrapped);
 
-% MATLAB returns continuously-unwrapped phase. For a 9th-order plant the
-% unwrap can add +360 deg before reaching wc; wrap into [-180, 180] for the
-% physical reading.
+% High-order plant: MATLAB's unwrap can add +360 deg before wc; wrap to
+% [-180, 180] for the physical phase.
 phi_L_phys = mod(phi_G_unwrapped + 180, 360) - 180;
 gamma_M_natural = 180 + phi_L_phys;
 
@@ -149,23 +104,9 @@ else
     fprintf('-> Lead required\n\n');
 end
 
-% Visual: combined Bode with wc + PM-line markers
-figure(403); clf
-bode(C_PI_vel * Gvel_outer, {0.01, 100});
-grid on;
-ax_all = findall(gcf, 'type', 'axes');
-phase_ax = ax_all(1);
-mag_ax   = ax_all(2);
-xline(mag_ax,   wc_vel, 'r--', sprintf('\\omega_c = %g', wc_vel));
-xline(phase_ax, wc_vel, 'r--', sprintf('\\omega_c = %g', wc_vel));
-yline(phase_ax, -180 + gamma_M_spec, 'g--', sprintf('-180+%d°  (PM line)', gamma_M_spec));
-title(mag_ax, 'Step 3: phase at \omega_c -- above the green line means no Lead needed');
-saveas(gcf, fullfile(IMG_DIR, 'regbot_task3_phase_balance.png'));
-
-
-%% ====================== STEP 4 — SOLVE Kp ==============================
-% Magnitude condition |L(j wc)| = 1. Same as Task 1 but the plant is
-% LOUD at wc (free integrator from Task 2's post-integrator), so Kp < 1.
+%% ====== STEP 4 — SOLVE Kp =====
+% Kp < 1: Gvel,outer is LOUD at wc (free integrator from Task 2's
+% post-integrator), so the magnitude condition divides down.
 Kp_vel = 1 / magL_unscaled;
 
 fprintf('|L|_unscaled = %.4f at wc  (%+.2f dB)\n', magL_unscaled, 20*log10(magL_unscaled));
@@ -177,7 +118,7 @@ T_vel = feedback(L_vel, 1);
 print_tf('C_vel', C_vel);
 
 
-%% ====================== STEP 5 — VERIFY =================================
+%% ====== STEP 5 — VERIFY =====
 [GM, PM, ~, wc_ach] = margin(L_vel);
 
 fprintf('wc = %.2f rad/s\n', wc_ach);
@@ -186,11 +127,11 @@ fprintf('GM = %.2f dB\n',    20*log10(GM));
 fprintf('RHP CL poles = %d\n\n', sum(real(pole(T_vel)) > 0));
 
 save_plot(figure(400), @() margin(L_vel), ...
-    'Step 5: Open-loop  L = C_{vel} G_{vel,outer}', ...
+    'Open-loop  L = C_{vel} G_{vel,outer}', ...
     IMG_DIR, 'regbot_task3_loop_bode.png');
 
 save_plot(figure(401), @() step(T_vel, 5), ...
-    'Step 5: Closed-loop step (v_{ref} = 1 m/s)', ...
+    'Closed-loop step (v_{ref} = 1 m/s)', ...
     IMG_DIR, 'regbot_task3_step.png');
 
 
