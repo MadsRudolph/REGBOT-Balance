@@ -91,6 +91,7 @@ save_plot(figure(300), @() bode(Gtilt, Gtilt_post, w_grid), ...
     'G_{tilt} vs. G_{tilt,post} -- post-integrator flattens the peak', ...
     IMG_DIR, 'regbot_task2_bode_post.png');
 legend('G_{tilt}(s)', '-C_{PI,post}(s) G_{tilt}(s)', 'Location', 'best');
+set(figure(300), 'Units', 'pixels', 'Position', [100 100 1600 960]);
 saveas(gcf, fullfile(IMG_DIR, 'regbot_task2_bode_post.png'));
 
 % Hand-drawn Nyquist of Gtilt_post so the (-1, 0) point stays visible.
@@ -99,6 +100,7 @@ w_ny     = logspace(-1, 4, 2000);
 [re, im] = nyquist(Gtilt_post, w_ny);
 re = squeeze(re); im = squeeze(im);
 figure(301); clf
+set(gcf, 'Units', 'pixels', 'Position', [100 100 1600 960]);
 plot(re,  im, 'b-',  'LineWidth', 1.5); hold on
 plot(re, -im, 'b--', 'LineWidth', 1.0);
 plot(-1, 0, 'r+', 'MarkerSize', 14, 'LineWidth', 2);
