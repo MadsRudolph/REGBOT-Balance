@@ -81,7 +81,8 @@ fprintf('Ni      = %d\n\n',     Ni_wv);
 % integrator (slope -20 dB/dec, phase -90). Above the zero, the zero
 % cancels the integrator's slope (slope 0 dB/dec, phase climbing back to 0).
 % At wc, the zero has done most of its phase recovery, so the PI's
-% phase contribution is only -arctan(Ni) - 90 = -18.4 deg for Ni=3.
+% phase contribution is only arctan(Ni) - 90 = -18.4 deg for Ni=3
+% (equivalently: -arctan(1/Ni) = -arctan(1/3) = -18.4 deg).
 tau_i_wv   = Ni_wv / wc_wv;
 C_PI_shape = (tau_i_wv*s + 1) / (tau_i_wv*s);   % PI with Kp = 1
 
