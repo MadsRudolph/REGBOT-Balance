@@ -16,8 +16,8 @@ model = 'regbot_1mg';
 % Break the balance loop before linearising; Task 1 loop stays closed.
 Kptilt = 0;       %#ok<NASGU> breaks balance loop at Kptilt
 tdtilt = 0;       %#ok<NASGU> silences gyro Lead path
-titilt = 1;       %#ok<NASGU> benign placeholder
-tipost = 1;       %#ok<NASGU> benign placeholder
+titilt = 1;       %#ok<NASGU> placeholder
+tipost = 1;       %#ok<NASGU> placeholder
 
 load_system(model);
 open_system(model);
