@@ -23,7 +23,7 @@ Team repository for MATLAB code, Simulink models, mission scripts, and notes for
 | `logs/` | Raw log files recorded from REGBOT during each hardware test |
 | `Report/` | Symlink to the Overleaf/LaTeX report repo (separate git repo) |
 | `Group_47.pdf` | Final submitted report/note (the exact PDF handed in on Learn) |
-| `Group_47_code.zip` | Final submitted code archive (`simulink/` + the Task 1 `data/` file) |
+| `Group_47_code.zip` | Final submitted archive — the report PDF, `simulink/` code, the Task 1 `data/` file, and all robot `logs/` |
 
 ## Tasks
 
@@ -71,6 +71,6 @@ The LaTeX report lives in a separate git repo (`git@github.com:MadsRudolph/REGBO
 The final assignment was handed in on Learn (course 34722 → Assignments → REGBOT balance), one submission for Group 47:
 
 - `Group_47.pdf` — the report/note (within the 5-page limit).
-- `Group_47_code.zip` — the MATLAB/Simulink code (`simulink/` + `data/Day5_results_v2.mat`).
+- `Group_47_code.zip` — a single archive bundling the report PDF (`Group_47.pdf`), the MATLAB/Simulink code (`simulink/`), the Task 1 data (`data/Day5_results_v2.mat`), and all robot logs (`logs/`).
 
 The project is finished.
