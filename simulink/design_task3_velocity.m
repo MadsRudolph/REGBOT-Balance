@@ -1,4 +1,4 @@
-%% Task 3 — Velocity outer loop (PI)
+%% Task 3 - Velocity outer loop (PI)
 %  Plant:  Gvel,outer(s) = theta_ref -> wheel_vel_filter (Tasks 1+2 closed).
 %          Stable; RHP zero at +8.5 rad/s sets a bandwidth ceiling.
 %  Specs:  wc = 1 rad/s (< z/5), gamma_M >= 60 deg, Ni = 3.
@@ -15,7 +15,7 @@ model = 'regbot_1mg';
 VEL_CTRL_OUT_BLOCK = '/Kpvel_gain';   % linearisation break point
 
 
-%% ====== STEP 0 — IDENTIFY THE PLANT =====
+%% ====== STEP 0 - IDENTIFY THE PLANT =====
 % Break the velocity loop at Kpvel_gain; Tasks 1+2 stay closed.
 Kpvel = 0;     %#ok<NASGU> breaks velocity loop for linearisation
 tivel = 1;     %#ok<NASGU> benign placeholder
@@ -45,7 +45,7 @@ fprintf('RHP poles = %d\n', P_count);
 fprintf('RHP zero at: '); fprintf('%+.3f  ', real(rhp_z)); fprintf('rad/s\n\n');
 
 
-%% ====== STEP 1 — PICK SPECS =====
+%% ====== STEP 1 - PICK SPECS =====
 % wc bounded by RHP-zero rule wc <= z/5 ~= 1.7 (tighter than the cascade
 % rule 15/5 = 3); pick wc = 1.
 wc_vel       = 1;        % target crossover [rad/s]
@@ -59,7 +59,7 @@ fprintf('wc = %.2f rad/s (z/5 = %.2f), gamma_M = %.0f deg, Ni = %d\n\n', ...
     wc_vel, wc_max, gamma_M_spec, Ni_vel);
 
 
-%% ====== STEP 2 — PLACE PI ZERO =====
+%% ====== STEP 2 - PLACE PI ZERO =====
 tau_i_vel = Ni_vel / wc_vel;
 C_PI_vel  = (tau_i_vel*s + 1) / (tau_i_vel*s);
 
@@ -67,7 +67,7 @@ fprintf('tau_i = Ni/wc = %.4f s   (PI zero at %.4f rad/s)\n\n', ...
     tau_i_vel, 1/tau_i_vel);
 
 
-%% ====== STEP 3 — PHASE BALANCE =====
+%% ====== STEP 3 - PHASE BALANCE =====
 [magL_unscaled, phi_G_unwrapped] = bode(C_PI_vel * Gvel_outer, wc_vel);
 magL_unscaled    = squeeze(magL_unscaled);
 phi_G_unwrapped  = squeeze(phi_G_unwrapped);
@@ -85,7 +85,7 @@ fprintf('natural PM    = %+.2f deg  (spec %d) -> no Lead, pure PI\n\n', ...
     gamma_M_natural, gamma_M_spec);
 
 
-%% ====== STEP 4 — SOLVE Kp =====
+%% ====== STEP 4 - SOLVE Kp =====
 % Magnitude condition: Kp = 1/|L| at wc. Here |L| > 1 (loud plant from
 % Task 2's free integrator), so Kp comes out < 1.
 Kp_vel = 1 / magL_unscaled;
@@ -100,7 +100,7 @@ T_vel = feedback(L_vel, 1);
 print_tf('C_vel', C_vel);
 
 
-%% ====== STEP 5 — VERIFY =====
+%% ====== STEP 5 - VERIFY =====
 [GM, PM, ~, wc_ach] = margin(L_vel);
 
 fprintf('wc = %.2f rad/s\n', wc_ach);

@@ -1,4 +1,4 @@
-%% Task 2 — Balance controller (Lecture 10 Method 2)
+%% Task 2 - Balance controller (Lecture 10 Method 2)
 %  Plant:  Gtilt(s) = vel_ref -> tilt angle (linearised, Task 1 loop closed).
 %          7th-order, 1 RHP pole (falling mode), 1 RHP zero (non-min phase).
 %  Specs:  wc = 15 rad/s, gamma_M >= 60 deg, Ni = 3.
@@ -12,7 +12,7 @@ s     = tf('s');
 model = 'regbot_1mg';
 
 
-%% ====== STEP 0 — IDENTIFY THE PLANT =====
+%% ====== STEP 0 - IDENTIFY THE PLANT =====
 % Break the balance loop before linearising; Task 1 loop stays closed.
 Kptilt = 0;       %#ok<NASGU> breaks balance loop at Kptilt
 tdtilt = 0;       %#ok<NASGU> silences gyro Lead path
@@ -43,7 +43,7 @@ fprintf('RHP poles = %d  -> unstable, falling mode e^(%.2f t)\n\n', ...
     P_count, p_unstable);
 
 
-%% ====== STEP 1 — SIGN OF K_PS =====
+%% ====== STEP 1 - SIGN OF K_PS =====
 % Nyquist: Z = N + P, want Z = 0 with P = 1, so we need N = -1 (one CCW
 % encirclement of (-1,0)). Gtilt has DC gain > 0, so no positive gain can
 % produce that encirclement -- sign(K_PS) = -1 (Method 2). The minus sign
@@ -57,7 +57,7 @@ fprintf('Z = N + P, want Z = 0, P = %d -> N = -%d\n', P_count, P_count);
 fprintf('DC gain > 0 AND P = 1  =>  sign(K_PS) = -1\n\n');
 
 
-%% ====== STEP 2 — POST-INTEGRATOR =====
+%% ====== STEP 2 - POST-INTEGRATOR =====
 % PI zero at |Gtilt|'s magnitude peak so the combined plant magnitude is
 % monotone; with the sign flip this yields the CCW encirclement of (-1,0).
 [mag_peak, k_peak] = max(mag_g);
@@ -100,7 +100,7 @@ xlabel('Re'); ylabel('Im');
 title('Nyquist: G_{tilt,post}  (one CCW encirclement of -1)');
 
 
-%% ====== STEP 3 — OUTER PI-LEAD =====
+%% ====== STEP 3 - OUTER PI-LEAD =====
 % PI-Lead on Gtilt,post. Lead via the gyro shortcut: C_Lead = (tau_d s + 1)
 % is realised as tau_d*gyro + theta in Simulink, so no filter pole.
 wc_tilt  = 15;       % target crossover [rad/s]
@@ -146,7 +146,7 @@ print_tf('C_outer', C_outer_tilt);
 print_tf('C_total', minreal(C_total_tilt));
 
 
-%% ====== STEP 4 — VERIFY =====
+%% ====== STEP 4 - VERIFY =====
 T_tilt   = feedback(L_tilt, 1);
 cl_poles = pole(minreal(T_tilt));
 rhp_cl   = sum(real(cl_poles) > 0);
