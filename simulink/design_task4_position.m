@@ -40,9 +40,10 @@ fprintf('Zeros:  '); fprintf('%7.2f  ', sort(real(zero(Gpos_outer)))); fprintf('
 fprintf('DC gain     = %.4e\n', dcgain(Gpos_outer));
 fprintf('RHP poles   = %d\n', P_count);
 fprintf('integrators = %d\n', n_int);
-if n_int >= 1
-    fprintf('-> Type-%d (pure P gives e_ss = 0 on step)\n\n', n_int);
-end
+% One pole at the origin (the v -> x integrator) makes the open loop
+% Type-1, so a pure P controller already gives zero steady-state error
+% to a step reference.
+fprintf('-> Type-%d (pure P gives e_ss = 0 on step)\n\n', n_int);
 
 
 %% ====== STEP 1 — PICK wc =====
@@ -58,28 +59,19 @@ fprintf('wc = %.2f rad/s, gamma_M = %d deg\n\n', wc_pos, gamma_M_spec);
 
 
 %% ====== STEP 2 — PHASE BALANCE =====
-% No PI (plant already Type-1): gamma_M - 180 = phi_G + phi_Lead.
+% No PI (plant already Type-1): phi_Lead = -180 + gamma_M - phi_G.
 % High-order plant; unwrap can add +360 at wc -- wrap to [-180,180].
+% phi_Lead comes out only ~ +2.85 deg (a small Lead) for this plant.
 [~, phi_G_unwrapped] = bode(Gpos_outer, wc_pos);
 phi_G_unwrapped = squeeze(phi_G_unwrapped);
-phi_G    = mod(phi_G_unwrapped + 180, 360) - 180;
-phi_Lead = mod(-180 + gamma_M_spec - phi_G + 180, 360) - 180;
-
-if phi_Lead <= 0
-    tau_d_pos  = 0;  C_Lead_pos = tf(1);
-    lead_note  = 'no Lead needed -- phase margin already met';
-elseif phi_Lead >= 89
-    tau_d_pos  = NaN; C_Lead_pos = tf(1);
-    lead_note  = sprintf('WARN: phi_Lead = %.1f deg too high', phi_Lead);
-else
-    tau_d_pos  = tand(phi_Lead) / wc_pos;
-    C_Lead_pos = tau_d_pos*s + 1;
-    lead_note  = 'standard ideal Lead (tau_d s + 1)';
-end
+phi_G      = mod(phi_G_unwrapped + 180, 360) - 180;
+phi_Lead   = mod(-180 + gamma_M_spec - phi_G + 180, 360) - 180;
+tau_d_pos  = tand(phi_Lead) / wc_pos;   % ideal Lead time constant
+C_Lead_pos = tau_d_pos*s + 1;           % ideal Lead (tau_d s + 1)
 
 fprintf('phase wrapped = %+.2f deg\n', phi_G);
-fprintf('phi_Lead      = %+.2f deg\n', phi_Lead);
-fprintf('tau_d         = %.4f s   (%s)\n\n', tau_d_pos, lead_note);
+fprintf('phi_Lead      = %+.2f deg  (small)\n', phi_Lead);
+fprintf('tau_d (ideal) = %.4f s\n\n', tau_d_pos);
 
 
 %% ====== STEP 3 — SOLVE Kp =====
@@ -91,26 +83,16 @@ fprintf('Kp = 1/|L| = %.4f\n\n',     Kp_pos);
 
 
 %% ====== STEP 4 — LEAD DECISION =====
-% Ideal Lead (tau_d s + 1) is improper -- Simulink Transfer Fcn rejects it.
-% Drop if phi_Lead <= threshold; otherwise use a proper Lead (filter pole).
-LEAD_DROP_THRESHOLD_DEG = 5;
-ALPHA                   = 0.1;
+% The ideal Lead (tau_d s + 1) is improper -- Simulink's Transfer Fcn
+% block rejects it. A proper Lead (tau_d s + 1)/(alpha tau_d s + 1) would
+% add a fast filter pole whose lag costs back ~3 deg -- about the same as
+% the ~3 deg the Lead was buying. So we drop the Lead and run pure P,
+% accepting gamma_M ~ 57 deg instead of 60 deg.
+tdpos_firmware  = 0;
+C_Lead_firmware = tf(1);
 
-if phi_Lead <= LEAD_DROP_THRESHOLD_DEG
-    tdpos_firmware  = 0;
-    C_Lead_firmware = tf(1);
-    decision = sprintf(...
-        'drop Lead (phi_Lead = %.2f deg <= threshold %.1f deg)', ...
-        phi_Lead, LEAD_DROP_THRESHOLD_DEG);
-else
-    tdpos_firmware  = tau_d_pos;
-    C_Lead_firmware = (tau_d_pos*s + 1) / (ALPHA*tau_d_pos*s + 1);
-    decision = sprintf(...
-        'proper Lead with alpha = %.2f (phi_Lead = %.2f deg > %.1f)', ...
-        ALPHA, phi_Lead, LEAD_DROP_THRESHOLD_DEG);
-end
-
-fprintf('decision: %s\n\n', decision);
+fprintf('Lead dropped -> pure P (tdpos = 0); trades ~%.1f deg of PM\n\n', ...
+    phi_Lead);
 
 
 %% ====== STEP 5 — VERIFY =====

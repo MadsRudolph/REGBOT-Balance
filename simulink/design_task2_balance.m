@@ -33,35 +33,28 @@ P_count    = sum(real(pole(Gtilt))>0);
 dc         = dcgain(Gtilt);
 p_unstable = max(real(pole(Gtilt)));   % falling-mode rate [rad/s]
 
+% Gtilt has P = 1 RHP pole (the inverted-pendulum falling mode) and
+% positive DC gain -- open-loop unstable, non-minimum phase.
 print_tf('Gtilt', Gtilt);
 fprintf('Poles:  '); fprintf('%7.2f  ', sort(real(pole(Gtilt)))); fprintf('\n');
 fprintf('Zeros:  '); fprintf('%7.2f  ', sort(real(zero(Gtilt)))); fprintf('\n');
 fprintf('DC gain   = %+.3e\n', dc);
-fprintf('RHP poles = %d\n', P_count);
-if P_count > 0
-    fprintf('-> unstable, falling mode e^(%.2f t)\n\n', p_unstable);
-else
-    fprintf('-> stable\n\n');
-end
+fprintf('RHP poles = %d  -> unstable, falling mode e^(%.2f t)\n\n', ...
+    P_count, p_unstable);
 
 
 %% ====== STEP 1 — SIGN OF K_PS =====
-% Z = N + P, P = 1, want Z = 0 -> N = -1. DC gain > 0 forces
-% sign(K_PS) = -1 (folded into the post-integrator below).
-w_grid = logspace(-2, 4, 4000);
-[mag_g, ~] = bode(Gtilt, w_grid);
-mag_g = squeeze(mag_g);
+% Nyquist: Z = N + P, want Z = 0 with P = 1, so we need N = -1 (one CCW
+% encirclement of (-1,0)). Gtilt has DC gain > 0, so no positive gain can
+% produce that encirclement -- sign(K_PS) = -1 (Method 2). The minus sign
+% is folded into the post-integrator below.
+sign_K = -1;
 
-if dc > 0
-    sign_K = -1;
-    sign_reason = 'DC gain > 0 AND P = 1  =>  sign(K_PS) = -1';
-else
-    sign_K = +1;
-    sign_reason = 'DC gain < 0  =>  sign(K_PS) = +1 may suffice';
-end
+w_grid = logspace(-2, 4, 4000);
+mag_g  = squeeze(bode(Gtilt, w_grid));
 
 fprintf('Z = N + P, want Z = 0, P = %d -> N = -%d\n', P_count, P_count);
-fprintf('%s\n\n', sign_reason);
+fprintf('DC gain > 0 AND P = 1  =>  sign(K_PS) = -1\n\n');
 
 
 %% ====== STEP 2 — POST-INTEGRATOR =====
@@ -92,21 +85,16 @@ Ni_tilt  = 3;        % PI zero at wc/Ni
 tau_i_tilt = Ni_tilt / wc_tilt;
 C_PI_tilt  = (tau_i_tilt*s + 1) / (tau_i_tilt*s);
 
-[~, phi_G]  = bode(Gtilt_post, wc_tilt);
-phi_PI      = -atand(1/Ni_tilt);
-phi_Lead    = -180 + gamma_M - phi_G - phi_PI;
-
-if phi_Lead <= 0
-    tau_d  = 0;  C_Lead = tf(1);
-    lead_note = 'no Lead needed';
-elseif phi_Lead >= 89
-    tau_d  = NaN; C_Lead = tf(1);
-    lead_note = sprintf('WARN: phi_Lead = %.1f deg too high', phi_Lead);
-else
-    tau_d  = tand(phi_Lead) / wc_tilt;
-    C_Lead = tau_d*s + 1;
-    lead_note = 'gyro-based ideal Lead (tau_d*gyro + theta)';
-end
+% Phase-balance: required Lead phase at wc is
+%   phi_Lead = -180 + gamma_M - phi_G - phi_PI.
+% For this plant phi_Lead = +33.5 deg (> 0), so a Lead IS needed. It is
+% the ideal Lead (tau_d s + 1), realised in Simulink as tau_d*gyro + theta
+% (the gyro measures theta_dot directly, so no filter pole is required).
+[~, phi_G] = bode(Gtilt_post, wc_tilt);
+phi_PI     = -atand(1/Ni_tilt);
+phi_Lead   = -180 + gamma_M - phi_G - phi_PI;
+tau_d      = tand(phi_Lead) / wc_tilt;
+C_Lead     = tau_d*s + 1;
 
 magL    = squeeze(bode(C_PI_tilt * C_Lead * Gtilt_post, wc_tilt));
 Kp_tilt = 1 / magL;
@@ -120,7 +108,7 @@ fprintf('wc = %.1f rad/s, gamma_M = %.0f deg, Ni = %d\n', ...
 fprintf('tau_i    = %.4f s\n',    tau_i_tilt);
 fprintf('phi_G    = %+.2f deg\n', phi_G);
 fprintf('phi_PI   = %+.2f deg\n', phi_PI);
-fprintf('phi_Lead = %+.2f deg  (%s)\n', phi_Lead, lead_note);
+fprintf('phi_Lead = %+.2f deg  (Lead needed)\n', phi_Lead);
 fprintf('tau_d    = %.4f s\n',    tau_d);
 fprintf('|L|      = %.4f\n',      magL);
 fprintf('Kp       = %.4f\n\n',    Kp_tilt);

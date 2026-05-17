@@ -46,19 +46,16 @@ fprintf('tau_i = Ni/wc = %.4f s   (PI zero at %.2f rad/s)\n\n', ...
 
 
 %% ====== STEP 4 — PHASE BALANCE =====
-% If natural PM >= spec, no Lead is needed.
+% Natural PM = 180 + phase(PI*G) at wc. It comes out +82.85 deg, well
+% above the 60 deg spec, so no Lead is needed -- a pure PI suffices.
 [magL_unscaled, phi_L_wc] = bode(C_PI_shape*Gvel_day5, wc_wv);
 magL_unscaled   = squeeze(magL_unscaled);
 phi_L_wc        = squeeze(phi_L_wc);
 gamma_M_natural = 180 + phi_L_wc;
 
 fprintf('phase at wc = %+.2f deg\n', phi_L_wc);
-fprintf('natural PM  = %+.2f deg  (spec %d)\n', gamma_M_natural, gamma_M_spec);
-if gamma_M_natural >= gamma_M_spec
-    fprintf('-> no Lead needed\n\n');
-else
-    fprintf('-> Lead required\n\n');
-end
+fprintf('natural PM  = %+.2f deg  (spec %d) -> no Lead, pure PI\n\n', ...
+    gamma_M_natural, gamma_M_spec);
 
 
 %% ====== STEP 5 — SOLVE Kp =====

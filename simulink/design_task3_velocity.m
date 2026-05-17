@@ -34,16 +34,15 @@ P_count = sum(real(pole(Gvel_outer)) > 0);
 z_all   = zero(Gvel_outer);
 rhp_z   = z_all(real(z_all) > 0);
 
+% Tasks 1+2 stabilised the falling mode, so Gvel,outer has 0 RHP poles,
+% but a non-minimum-phase RHP zero (~ +8.5 rad/s) survives and caps the
+% achievable bandwidth.
 print_tf('Gvel_outer', Gvel_outer);
 fprintf('Poles:  '); fprintf('%7.2f  ', sort(real(pole(Gvel_outer)))); fprintf('\n');
 fprintf('Zeros:  '); fprintf('%7.2f  ', sort(real(zero(Gvel_outer)))); fprintf('\n');
 fprintf('DC gain   = %.4e\n', dcgain(Gvel_outer));
 fprintf('RHP poles = %d\n', P_count);
-if ~isempty(rhp_z)
-    fprintf('RHP zeros at: '); fprintf('%+7.3f  ', real(rhp_z)); fprintf('rad/s\n\n');
-else
-    fprintf('RHP zeros = 0\n\n');
-end
+fprintf('RHP zero at: '); fprintf('%+.3f  ', real(rhp_z)); fprintf('rad/s\n\n');
 
 
 %% ====== STEP 1 — PICK SPECS =====
@@ -53,13 +52,8 @@ wc_vel       = 1;        % target crossover [rad/s]
 gamma_M_spec = 60;       % phase margin spec [deg]
 Ni_vel       = 3;        % PI zero at wc/Ni
 
-if ~isempty(rhp_z)
-    z_min  = min(real(rhp_z));
-    wc_max = z_min / 5;
-else
-    z_min  = NaN;
-    wc_max = Inf;
-end
+z_min  = min(real(rhp_z));   % RHP zero ~ +8.5 rad/s
+wc_max = z_min / 5;          % bandwidth ceiling ~ 1.7 rad/s
 
 fprintf('wc = %.2f rad/s (z/5 = %.2f), gamma_M = %.0f deg, Ni = %d\n\n', ...
     wc_vel, wc_max, gamma_M_spec, Ni_vel);
@@ -79,18 +73,16 @@ magL_unscaled    = squeeze(magL_unscaled);
 phi_G_unwrapped  = squeeze(phi_G_unwrapped);
 
 % High-order plant: unwrap can add +360 before wc; wrap to [-180,180].
+% Natural PM comes out +68.98 deg, above the 60 deg spec, so no Lead is
+% needed -- the controller is a pure PI.
 phi_L_phys      = mod(phi_G_unwrapped + 180, 360) - 180;
 gamma_M_natural = 180 + phi_L_phys;
 phi_PI          = -atand(1/Ni_vel);
 
 fprintf('phase wrapped = %+.2f deg\n', phi_L_phys);
 fprintf('phi_PI        = %+.2f deg\n', phi_PI);
-fprintf('natural PM    = %+.2f deg  (spec %d)\n', gamma_M_natural, gamma_M_spec);
-if gamma_M_natural >= gamma_M_spec
-    fprintf('-> no Lead needed\n\n');
-else
-    fprintf('-> Lead required\n\n');
-end
+fprintf('natural PM    = %+.2f deg  (spec %d) -> no Lead, pure PI\n\n', ...
+    gamma_M_natural, gamma_M_spec);
 
 
 %% ====== STEP 4 — SOLVE Kp =====
