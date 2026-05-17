@@ -59,17 +59,15 @@ fprintf('natural PM  = %+.2f deg  (spec %d) -> no Lead, pure PI\n\n', ...
 
 
 %% ====== STEP 5 — SOLVE Kp =====
-% Magnitude condition: the PI zero already fixed the phase, so Kp (a flat
-% gain) is the only knob left. magL_unscaled = |C_PI(jwc) G(jwc)| with
-% Kp = 1; choosing Kp = 1/magL_unscaled makes |L(jwc)| = 1 (0 dB), i.e.
-% the gain crossover lands exactly at the target wc.
+% Magnitude condition: phase is already set, so pick the flat gain Kp
+% that puts |L| = 1 at wc.
 Kp_wv = 1 / magL_unscaled;
 
 fprintf('|L|_unscaled = %.4f at wc\n', magL_unscaled);
 fprintf('Kp = 1/|L|   = %.4f\n\n',     Kp_wv);
 
-C_wv = Kp_wv * C_PI_shape;     % final PI controller
-L_wv = C_wv * Gvel_day5;       % open loop for the margin check
+C_wv = Kp_wv * C_PI_shape;
+L_wv = C_wv * Gvel_day5;
 print_tf('C_wv', C_wv);
 
 
