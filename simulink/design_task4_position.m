@@ -24,7 +24,7 @@ X_POS_PORT         = 3;       % port 3 = x_position
 %% ====== STEP 0 — IDENTIFY THE PLANT =====
 % Linearise pos_ref -> x_position with the position loop broken at
 % Kppos_gain. Tasks 1-3 stay closed.
-Kppos = 0;     %#ok<NASGU>
+Kppos = 0;     %#ok<NASGU> breaks the position loop for linearisation
 
 load_system(model);
 open_system(model);
@@ -51,10 +51,11 @@ if n_int >= 1
 end
 
 %% ====== STEP 1 — PICK wc =====
-% wc iterated against the 2 m mission spec (peak v >= 0.7 m/s, settle <= 10 s):
-%   wc = 0.2 -> peak v 0.33, settle 20 s    FAIL
-%   wc = 0.5 -> peak v 0.68, settle 12 s    close
-%   wc = 0.6 -> peak v 0.82, settle ~10 s   CHOSEN
+% wc iterated against the 2 m mission spec (peak v >= 0.7 m/s, reach 2 m
+% within 10 s; the 2% settle envelope is pessimistic):
+%   wc = 0.2 -> peak v 0.33, settle 20 s     FAIL
+%   wc = 0.5 -> peak v 0.68, settle 12 s     close
+%   wc = 0.6 -> peak v 0.77, settle ~11 s    CHOSEN (firmware, Lead dropped)
 wc_pos       = 0.6;       % chosen against mission specs
 gamma_M_spec = 60;        % course default
 

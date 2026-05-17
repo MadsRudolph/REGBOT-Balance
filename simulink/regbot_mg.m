@@ -60,6 +60,6 @@ tivel  = 3.0000;
 % Pure P on Gpos,outer (Type-1 plant). wc = 0.6 rad/s, PM = 57 deg.
 % Lead dropped: ideal (tau_d s + 1) is improper (Simulink rejects), and a
 % proper-Lead block isn't worth the ~3 deg PM cost. Linear 2 m step:
-% peak v = 0.753 m/s (spec >= 0.7 m/s).
+% peak v = 0.772 m/s (spec >= 0.7 m/s).
 Kppos  = 0.5411;
 tdpos  = 0;

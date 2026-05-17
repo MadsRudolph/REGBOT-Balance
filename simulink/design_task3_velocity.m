@@ -21,8 +21,8 @@ VEL_CTRL_OUT_BLOCK = '/Kpvel_gain';   % linearisation break point
 % Linearise theta_ref -> wheel_vel_filter with the velocity loop broken at
 % Kpvel_gain. Tasks 1+2 stay closed (non-zero gains in the workspace).
 % Defensive zeroing in case someone edited regbot_mg:
-Kpvel = 0;
-tivel = 1;
+Kpvel = 0;     %#ok<NASGU> breaks velocity loop for linearisation
+tivel = 1;     %#ok<NASGU> benign placeholder
 
 load_system(model);
 open_system(model);

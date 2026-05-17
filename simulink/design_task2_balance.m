@@ -18,10 +18,10 @@ IMG_DIR = pick_image_dir();
 %% ====== STEP 0 — IDENTIFY THE PLANT =====
 % Open the balance loop before linearising so Gtilt is the true vel_ref ->
 % tilt plant. Task 1 wheel-velocity loop stays active.
-Kptilt = 0;       % breaks balance loop at Kptilt
-tdtilt = 0;       % silences gyro Lead path
-titilt = 1;       % benign placeholder
-tipost = 1;       % benign placeholder
+Kptilt = 0;       %#ok<NASGU> breaks balance loop at Kptilt
+tdtilt = 0;       %#ok<NASGU> silences gyro Lead path
+titilt = 1;       %#ok<NASGU> benign placeholder
+tipost = 1;       %#ok<NASGU> benign placeholder
 
 load_system(model);
 open_system(model);
