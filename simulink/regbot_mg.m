@@ -1,4 +1,4 @@
-%% regbot_mg.m — workspace loader for the REGBOT Balance Assignment.
+%% regbot_mg.m - workspace loader for the REGBOT Balance Assignment.
 %  Populates physical params and the committed controller gains so
 %  regbot_1mg.slx can compile and simulate. Each gain block names the
 %  design script that produced it. See docs/MATLAB Walkthrough.md.
@@ -9,13 +9,13 @@ addpath(fullfile(this_dir, 'lib'));
 
 
 %% ----------------------------- Physical parameters --------------------
-% Motor — electrical (two motors in parallel)
+% Motor - electrical (two motors in parallel)
 RA   = 3.3/2;            % armature resistance          [ohm]
 LA   = 6.6e-3/2;         % armature inductance          [H]
 Kemf = 0.0105;           % EMF / torque constant        [V s/rad]
 Km   = Kemf;             % torque constant              [N m/A]
 
-% Motor — mechanical (two motors)
+% Motor - mechanical (two motors)
 JA   = 1.3e-6 * 2;       % rotor inertia                [kg m^2]
 BA   = 3e-6   * 2;       % rotor friction               [N m s/rad]
 NG   = 9.69;             % gear ratio

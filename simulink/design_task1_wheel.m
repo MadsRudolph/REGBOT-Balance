@@ -1,22 +1,20 @@
-%% Task 1 — Wheel-speed PI controller design
-%  Plant:  Gvel(s) = 2.198/(s+5.985)  (Day 5 v2 on-floor 1-pole tfest fit)
+%% Task 1 - Wheel-speed PI controller design
+%  Plant:  Gvel(s) = 2.198/(s+5.985)  (Day 5 on-floor 1-pole tfest fit)
 %  Specs:  wc = 30 rad/s, gamma_M >= 60 deg, Ni = 3.
-%  See docs/MATLAB Walkthrough.md §2 for the derivation.
 
 close all; clear;
 
 addpath(fileparts(mfilename('fullpath')));
 regbot_mg;
 
-s       = tf('s');
-IMG_DIR = pick_image_dir();
+s = tf('s');
 
 
-%% ====== STEP 1 — INSPECT THE PLANT =====
+%% ====== STEP 1 - INSPECT THE PLANT =====
 mat_path = fullfile(fileparts(mfilename('fullpath')), '..', 'data', ...
     'Day5_results_v2.mat');
 S         = load(mat_path, 'G_1p_avg');
-Gvel_day5 = S.G_1p_avg;     % 2.198 / (s + 5.985)
+Gvel_day5 = S.G_1p_avg;
 
 p_plant = pole(Gvel_day5);
 K_DC    = dcgain(Gvel_day5);
@@ -29,43 +27,40 @@ fprintf('break   = %.3f rad/s\n', omega_b);
 fprintf('tau     = %.3f s\n\n', tau_p);
 
 
-%% ====== STEP 2 — PICK SPECS =====
+%% ====== STEP 2 - PICK SPECS =====
 wc_wv        = 30;       % target crossover [rad/s]
 gamma_M_spec = 60;       % phase margin spec [deg]
 Ni_wv        = 3;        % PI zero at wc/Ni
 
-fprintf('wc      = %d rad/s\n', wc_wv);
-fprintf('gamma_M = %d deg\n',   gamma_M_spec);
-fprintf('Ni      = %d\n\n',     Ni_wv);
+fprintf('wc = %d rad/s, gamma_M = %d deg, Ni = %d\n\n', ...
+    wc_wv, gamma_M_spec, Ni_wv);
 
 
-%% ====== STEP 3 — PLACE THE PI ZERO =====
-% PI zero at wc/Ni. Phase contribution at wc: arctan(Ni) - 90 = -18.4 deg
-% (Ni = 3), i.e. -arctan(1/Ni).
+%% ====== STEP 3 - PLACE THE PI ZERO =====
+% PI zero at wc/Ni. Phase at wc: arctan(Ni) - 90 = -18.4 deg (Ni = 3).
 tau_i_wv   = Ni_wv / wc_wv;
 C_PI_shape = (tau_i_wv*s + 1) / (tau_i_wv*s);   % PI with Kp = 1
 
-fprintf('tau_i = Ni/wc = %.4f s   (PI zero at %.2f rad/s)\n\n', tau_i_wv, 1/tau_i_wv);
+fprintf('tau_i = Ni/wc = %.4f s   (PI zero at %.2f rad/s)\n\n', ...
+    tau_i_wv, 1/tau_i_wv);
 
 
-%% ====== STEP 4 — PHASE BALANCE =====
-% If natural PM >= spec, no Lead. Otherwise Lead must close the gap.
+%% ====== STEP 4 - PHASE BALANCE =====
+% Natural PM = 180 + phase(PI*G) at wc. It comes out +82.85 deg, well
+% above the 60 deg spec, so no Lead is needed
 [magL_unscaled, phi_L_wc] = bode(C_PI_shape*Gvel_day5, wc_wv);
 magL_unscaled   = squeeze(magL_unscaled);
 phi_L_wc        = squeeze(phi_L_wc);
 gamma_M_natural = 180 + phi_L_wc;
 
 fprintf('phase at wc = %+.2f deg\n', phi_L_wc);
-fprintf('natural PM  = %+.2f deg  (spec %d)\n', gamma_M_natural, gamma_M_spec);
-if gamma_M_natural >= gamma_M_spec
-    fprintf('-> no Lead needed\n\n');
-else
-    fprintf('-> Lead required\n\n');
-end
+fprintf('natural PM  = %+.2f deg  (spec %d) -> no Lead, pure PI\n\n', ...
+    gamma_M_natural, gamma_M_spec);
 
 
-%% ====== STEP 5 — SOLVE Kp =====
-% Solve from |L(jwc)| = 1; Kp is a flat gain.
+%% ====== STEP 5 - SOLVE Kp =====
+% Magnitude condition: phase is already set, so pick the flat gain Kp
+% that puts |L| = 1 at wc.
 Kp_wv = 1 / magL_unscaled;
 
 fprintf('|L|_unscaled = %.4f at wc\n', magL_unscaled);
@@ -76,20 +71,15 @@ L_wv = C_wv * Gvel_day5;
 print_tf('C_wv', C_wv);
 
 
-%% ====== STEP 6 — VERIFY =====
+%% ====== STEP 6 - VERIFY =====
 [GM, PM, ~, wc_ach] = margin(L_wv);
 
 fprintf('wc = %.2f rad/s\n', wc_ach);
 fprintf('PM = %.2f deg\n',   PM);
 fprintf('GM = %.2f dB\n\n',  20*log10(GM));
 
-save_plot(figure(200), @() margin(L_wv), ...
-    'Open-loop Bode  L = C_{wv} G_{vel}', ...
-    IMG_DIR, 'regbot_task1_bode.png');
-
-save_plot(figure(201), @() step(feedback(L_wv, 1), 0.5), ...
-    'Closed-loop step response  (T = L/(1+L))', ...
-    IMG_DIR, 'regbot_task1_step.png');
+figure; margin(L_wv);                 grid on; title('Task 1: open-loop L_{wv} (margins)');
+figure; step(feedback(L_wv, 1), 0.5); grid on; title('Task 1: closed-loop step');
 
 
 %% ------------------- Write to workspace + gains block ------------------
