@@ -2,6 +2,8 @@
 
 Team repository for MATLAB code, Simulink models, mission scripts, and notes for the 34722 Linear Control Design 1 final assignment.
 
+**Status: complete.** The report and code were submitted on Learn for Group 47 (May 2026). This repository is final; no further work is planned.
+
 ## Team (Group 47)
 
 - Andreas Skånning (s241123)
@@ -20,6 +22,8 @@ Team repository for MATLAB code, Simulink models, mission scripts, and notes for
 | `config/` | Firmware ini file (`regbot_group47.ini`) — the values flashed onto the robot |
 | `logs/` | Raw log files recorded from REGBOT during each hardware test |
 | `Report/` | Symlink to the Overleaf/LaTeX report repo (separate git repo) |
+| `Group_47.pdf` | Final submitted report/note (the exact PDF handed in on Learn) |
+| `Group_47_code.zip` | Final submitted code archive (`simulink/` + the Task 1 `data/` file) |
 
 ## Tasks
 
@@ -61,3 +65,12 @@ All plots are written into `docs/images/` — that's the single source of truth 
 ## Report
 
 The LaTeX report lives in a separate git repo (`git@github.com:MadsRudolph/REGBOT-Balance-assignment.git`) and is accessible here through the `Report/` symlink.
+
+## Submission
+
+The final assignment was handed in on Learn (course 34722 → Assignments → REGBOT balance), one submission for Group 47:
+
+- `Group_47.pdf` — the report/note (within the 5-page limit).
+- `Group_47_code.zip` — the MATLAB/Simulink code (`simulink/` + `data/Day5_results_v2.mat`).
+
+The project is finished.
