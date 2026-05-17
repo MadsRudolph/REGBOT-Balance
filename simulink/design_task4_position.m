@@ -75,6 +75,10 @@ fprintf('tau_d (ideal) = %.4f s\n\n', tau_d_pos);
 
 
 %% ====== STEP 3 — SOLVE Kp =====
+% Magnitude condition: Kp = 1 / |C_Lead(jwc) Gpos,outer(jwc)| places the
+% crossover at wc. The ideal Lead is used here only to size Kp; since the
+% Lead's magnitude at wc is ~1 (it is a ~3 deg phase nudge, near-unity
+% gain), dropping it in Step 4 leaves Kp essentially unchanged.
 magL   = squeeze(bode(C_Lead_pos * Gpos_outer, wc_pos));
 Kp_pos = 1 / magL;
 

@@ -96,9 +96,24 @@ phi_Lead   = -180 + gamma_M - phi_G - phi_PI;
 tau_d      = tand(phi_Lead) / wc_tilt;
 C_Lead     = tau_d*s + 1;
 
+% Magnitude condition. With the phase already set by the PI zero and the
+% Lead, Kp is the only free parameter left and it is a flat gain (shifts
+% the whole magnitude curve up/down without touching phase). Evaluate the
+% open-loop magnitude at wc with Kp = 1, then pick Kp so |L(jwc)| = 1
+% (0 dB) -- that forces the gain crossover to land exactly at wc.
 magL    = squeeze(bode(C_PI_tilt * C_Lead * Gtilt_post, wc_tilt));
 Kp_tilt = 1 / magL;
 
+% Two views of the same controller:
+%  - C_outer_tilt: the loop-shaping controller acting on the *reshaped*
+%    plant Gtilt_post. L_tilt = C_outer_tilt * Gtilt_post is the open loop
+%    we verify margins on (Step 4).
+%  - C_total_tilt: the *physical* tilt controller the Simulink model runs,
+%    from tilt error to vel_ref. The sign flip (sign_K) and the
+%    post-integrator (C_PI_post) were folded into Gtilt_post for the
+%    design, but on the robot they live in the controller path, so they
+%    reappear here. Its factors map 1:1 to the committed gains
+%    (Kp_tilt, titilt, tdtilt, tipost) written out at the end.
 C_outer_tilt = Kp_tilt * C_PI_tilt * C_Lead;
 L_tilt       = C_outer_tilt * Gtilt_post;
 C_total_tilt = Kp_tilt * sign_K * C_PI_post * C_PI_tilt * C_Lead;

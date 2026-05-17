@@ -86,17 +86,19 @@ fprintf('natural PM    = %+.2f deg  (spec %d) -> no Lead, pure PI\n\n', ...
 
 
 %% ====== STEP 4 — SOLVE Kp =====
-% Kp < 1: Gvel,outer is loud at wc (free integrator from Task 2's
-% post-integrator), so the magnitude condition divides down.
+% Magnitude condition: Kp = 1 / |C_PI(jwc) Gvel,outer(jwc)| places the
+% gain crossover at wc. Here magL_unscaled > 1 (Gvel,outer is loud at wc
+% because Task 2's post-integrator left a free integrator in the inner
+% loop), so Kp comes out < 1 -- the condition divides the gain down.
 Kp_vel = 1 / magL_unscaled;
 
 fprintf('|L|_unscaled = %.4f at wc  (%+.2f dB)\n', ...
     magL_unscaled, 20*log10(magL_unscaled));
 fprintf('Kp = 1/|L|   = %.4f\n\n', Kp_vel);
 
-C_vel = Kp_vel * C_PI_vel;
-L_vel = C_vel * Gvel_outer;
-T_vel = feedback(L_vel, 1);
+C_vel = Kp_vel * C_PI_vel;     % final PI controller
+L_vel = C_vel * Gvel_outer;    % open loop for the margin check
+T_vel = feedback(L_vel, 1);    % closed loop (for the RHP-pole check)
 print_tf('C_vel', C_vel);
 
 
