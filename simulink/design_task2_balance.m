@@ -74,6 +74,31 @@ print_tf('Gtilt_post', minreal(Gtilt_post));
 fprintf('RHP poles of Gtilt_post = %d\n\n', ...
     sum(real(pole(minreal(Gtilt_post)))>0));
 
+% Method-2 pre-treatment figures (report). Bode overlay shows the
+% post-integrator + sign flip flattening the magnitude peak.
+figure; bode(Gtilt, Gtilt_post, w_grid); grid on;
+legend('G_{tilt}(s)', '-C_{PI,post}(s) G_{tilt}(s)', 'Location', 'best');
+title('G_{tilt} vs. G_{tilt,post} -- post-integrator flattens the peak');
+
+% Nyquist of Gtilt_post: one CCW encirclement of (-1,0) proves Z = 0
+% (N = -1, P = 1). Sampled above 0.1 rad/s so the free-integrator tail
+% does not blow up the axes.
+w_ny     = logspace(-1, 4, 2000);
+[re, im] = nyquist(Gtilt_post, w_ny);
+re = squeeze(re); im = squeeze(im);
+figure;
+plot(re,  im, 'b-',  'LineWidth', 1.5); hold on
+plot(re, -im, 'b--', 'LineWidth', 1.0);
+plot(-1, 0, 'r+', 'MarkerSize', 14, 'LineWidth', 2);
+ks = round([0.2 0.5 0.8] * length(re));   % 3 direction arrows
+for k = ks
+    quiver(re(k), im(k), re(k+1)-re(k), im(k+1)-im(k), 0, ...
+           'Color', 'b', 'MaxHeadSize', 5, 'LineWidth', 1.5, 'AutoScale', 'off');
+end
+xlim([-3 1]); ylim([-3 3]); axis equal; grid on
+xlabel('Re'); ylabel('Im');
+title('Nyquist: G_{tilt,post}  (one CCW encirclement of -1)');
+
 
 %% ====== STEP 3 — OUTER PI-LEAD =====
 % PI-Lead on Gtilt,post. Lead via the gyro shortcut: C_Lead = (tau_d s + 1)
