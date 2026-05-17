@@ -108,6 +108,9 @@ fprintf('PM = %.2f deg\n',   PM);
 fprintf('GM = %.2f dB\n',    20*log10(GM));
 fprintf('RHP CL poles = %d\n\n', sum(real(pole(T_vel)) > 0));
 
+figure; margin(L_vel);  grid on; title('Task 3: open-loop L_{vel} (margins)');
+figure; step(T_vel, 5); grid on; title('Task 3: closed-loop step (v_{ref} = 1 m/s)');
+
 
 %% ------------------- Write to workspace + gains block ------------------
 Kpvel = Kp_vel;

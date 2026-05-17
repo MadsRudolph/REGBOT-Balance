@@ -136,6 +136,9 @@ fprintf('RHP CL poles = %d\n', rhp_cl);
 % peak undershoot ~ 6.6 deg.
 fprintf('IC release  : settle (2%%) = 1.34 s, peak undershoot ~ 6.6 deg\n\n');
 
+figure; margin(L_tilt);  grid on; title('Task 2: open-loop L_{tilt} (margins)');
+figure; step(T_tilt, 2); grid on; title('Task 2: closed-loop step');
+
 
 %% ------------------- Write to workspace + gains block ------------------
 Kptilt = Kp_tilt;

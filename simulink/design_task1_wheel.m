@@ -47,7 +47,7 @@ fprintf('tau_i = Ni/wc = %.4f s   (PI zero at %.2f rad/s)\n\n', ...
 
 %% ====== STEP 4 — PHASE BALANCE =====
 % Natural PM = 180 + phase(PI*G) at wc. It comes out +82.85 deg, well
-% above the 60 deg spec, so no Lead is needed -- a pure PI suffices.
+% above the 60 deg spec, so no Lead is needed
 [magL_unscaled, phi_L_wc] = bode(C_PI_shape*Gvel_day5, wc_wv);
 magL_unscaled   = squeeze(magL_unscaled);
 phi_L_wc        = squeeze(phi_L_wc);
@@ -77,6 +77,9 @@ print_tf('C_wv', C_wv);
 fprintf('wc = %.2f rad/s\n', wc_ach);
 fprintf('PM = %.2f deg\n',   PM);
 fprintf('GM = %.2f dB\n\n',  20*log10(GM));
+
+figure; margin(L_wv);                 grid on; title('Task 1: open-loop L_{wv} (margins)');
+figure; step(feedback(L_wv, 1), 0.5); grid on; title('Task 1: closed-loop step');
 
 
 %% ------------------- Write to workspace + gains block ------------------

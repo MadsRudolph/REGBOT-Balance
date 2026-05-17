@@ -122,6 +122,9 @@ settle_t = t_step(settle_i);
 fprintf('peak v       = %.3f m/s\n', peak_v);
 fprintf('settle (2%%)  = %.2f s\n\n', settle_t);
 
+figure; margin(L_pos_firmware);     grid on; title('Task 4: open-loop L_{pos} firmware (margins)');
+figure; step(2 * T_pos_firmware, 20); grid on; title('Task 4: 2 m mission step');
+
 
 %% ------------------- Write to workspace + gains block ------------------
 Kppos = Kp_pos;
